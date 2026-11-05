@@ -173,4 +173,9 @@ export type QrStatus =
   | { status: 'confirming' }
   | { status: 'success' }
 
+/** 当前用户绑定网易云的状态 */
+export type NeteaseBinding =
+  | { bound: false }
+  | { bound: true; nickname: string; uid: string; vip: boolean }
+
 export type Ack<T = unknown> = { ok: true; data: T } | { ok: false; code: string; message?: string }

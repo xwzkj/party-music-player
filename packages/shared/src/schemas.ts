@@ -5,6 +5,8 @@ export const passwordSchema = z.string().min(8, '密码至少 8 位').max(64, '�
 export const nicknameSchema = z.string().trim().min(1, '昵称不能为空').max(16, '昵称最多 16 字')
 export const emailSchema = z.string().trim().email('邮箱格式不正确').max(254)
 export const emailCodeSchema = z.string().regex(/^\d{6}$/, '验证码为 6 位数字')
+export const phoneSchema = z.string().trim().regex(/^1[3-9]\d{9}$/, '请填写 11 位手机号')
+export const smsCodeSchema = z.string().trim().regex(/^\d{4,6}$/, '验证码为 4 到 6 位数字')
 export const roomCodeSchema = z.string().regex(/^\d{6}$/, '房间号为 6 位数字')
 export const passcodeSchema = z.string().trim().min(4, '口令 4 到 16 位').max(16, '口令 4 到 16 位')
 export const idSchema = z.string().min(1).max(64)
@@ -76,6 +78,10 @@ export const searchQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(50).default(1),
 })
 export const resolvePlaylistSchema = z.object({ link: z.string().trim().min(1).max(500) })
+
+/** 网易云绑定：扫码、手机号验证码两种方式共用这些入参 */
+export const neteaseCaptchaRequestSchema = z.object({ phone: phoneSchema })
+export const neteasePhoneLoginSchema = z.object({ phone: phoneSchema, captcha: smsCodeSchema })
 
 const weightSchema = z.number().min(0).max(100)
 export const roomSettingsPatchSchema = z

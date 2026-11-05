@@ -24,6 +24,8 @@ interface NcmApi {
   login_qr_key: ApiFn
   login_qr_create: ApiFn
   login_qr_check: ApiFn
+  captcha_sent: ApiFn
+  login_cellphone: ApiFn
   user_account: ApiFn
 }
 
@@ -74,6 +76,12 @@ async function call(name: keyof NcmApi, params: Params): Promise<any> {
 function httpsUrl(u: string | undefined | null): string {
   if (!u) return ''
   return u.replace(/^http:\/\//, 'https://')
+}
+
+/** 网易云失败时的提示文字在 msg 或 message 里 */
+function failureMessage(body: any, fallback: string): string {
+  const m = body?.message ?? body?.msg
+  return typeof m === 'string' && m.trim() ? m.trim() : fallback
 }
 
 function toTrack(s: any): Track {
@@ -193,5 +201,19 @@ export class NeteaseClient implements MusicProvider {
     const p = body?.profile
     if (!p) throw new AppError('NETEASE_ERROR', 502, '网易云登录状态无效')
     return { uid: String(p.userId), nickname: String(p.nickname ?? ''), vipType: Number(p.vipType ?? 0) }
+  }
+
+  /** 给手机号发登录验证码 */
+  async sendLoginCaptcha(phone: string): Promise<void> {
+    const body = await call('captcha_sent', { phone })
+    if (body?.code !== 200) throw new AppError('NETEASE_ERROR', 400, failureMessage(body, '验证码发送失败'))
+  }
+
+  /** 手机号 + 短信验证码登录，返回网易云的 Cookie 串 */
+  async loginByPhone(phone: string, captcha: string): Promise<string> {
+    const body = await call('login_cellphone', { phone, captcha })
+    const cookie = typeof body?.cookie === 'string' ? body.cookie : ''
+    if (body?.code === 200 && cookie) return cookie
+    throw new AppError('NETEASE_ERROR', 400, failureMessage(body, '绑定失败，请检查手机号和验证码'))
   }
 }

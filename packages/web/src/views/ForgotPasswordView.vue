@@ -54,12 +54,25 @@ async function confirm(): Promise<void> {
       <div class="muted">本站没有开启邮箱验证，请联系管理员重置密码。</div>
     </template>
     <template v-else>
-      <mdui-text-field label="用户名或邮箱" :value="account" @input="account = val($event)" :disabled="sent" />
+      <mdui-text-field
+        variant="outlined"
+        label="用户名或邮箱"
+        :value="account"
+        :disabled="sent"
+        @input="account = val($event)"
+      />
       <TurnstileWidget v-if="turnstile && !sent" ref="ts" :site-key="auth.config.turnstileSiteKey!" @token="turnstileToken = $event" />
       <mdui-button v-if="!sent" :loading="busy" @click="request">发送重置码</mdui-button>
       <template v-else>
-        <mdui-text-field label="6 位重置码" :value="code" @input="code = val($event)" />
-        <mdui-text-field label="新密码" type="password" toggle-password :value="password" @input="password = val($event)" />
+        <mdui-text-field variant="outlined" label="6 位重置码" :value="code" @input="code = val($event)" />
+        <mdui-text-field
+          variant="outlined"
+          label="新密码"
+          type="password"
+          toggle-password
+          :value="password"
+          @input="password = val($event)"
+        />
         <mdui-button :loading="busy" @click="confirm">重置密码</mdui-button>
         <mdui-button variant="text" @click="sent = false">重新发送</mdui-button>
       </template>

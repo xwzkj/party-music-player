@@ -47,7 +47,7 @@ export function attachRealtime(app: FastifyInstance): IO {
     path: '/socket.io',
     serveClient: false,
     allowRequest: (req, cb) => {
-      cb(null, originAllowed(req.headers.origin, req.headers.host))
+      cb(null, originAllowed(req.headers.origin, req.headers.host, req.headers['sec-fetch-site']))
     },
   })
 

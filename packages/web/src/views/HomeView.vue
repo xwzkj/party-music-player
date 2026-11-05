@@ -66,6 +66,7 @@ async function logout(): Promise<void> {
         <div class="card-pad stack">
           <div class="title-medium">加入房间</div>
           <mdui-text-field
+            variant="outlined"
             label="6 位房间号"
             inputmode="numeric"
             maxlength="6"
@@ -81,6 +82,7 @@ async function logout(): Promise<void> {
         <div class="card-pad stack">
           <div class="title-medium">创建房间</div>
           <mdui-text-field
+            variant="outlined"
             label="口令（可选）"
             helper="4 到 16 位；不填就随机生成 4 位数字"
             :value="newPasscode"
@@ -96,7 +98,7 @@ async function logout(): Promise<void> {
     <template v-if="myRooms.length">
       <div class="title-medium">我的房间</div>
       <div class="rooms">
-        <mdui-card v-for="r in myRooms" :key="r.code" variant="outlined" clickable @click="router.push(`/r/${r.code}/room`)">
+        <mdui-card v-for="r in myRooms" :key="r.code" variant="filled" clickable @click="router.push(`/r/${r.code}/room`)">
           <div class="card-pad">
             <div class="headline-small">{{ r.code }}</div>
             <div class="muted">{{ r.isOwner ? '我是房主 · ' : '' }}{{ r.memberCount }} 人</div>

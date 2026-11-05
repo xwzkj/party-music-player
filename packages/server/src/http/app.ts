@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import path from 'node:path'
 import Fastify, { LogController, type FastifyBaseLogger, type FastifyInstance } from 'fastify'
 import cookie from '@fastify/cookie'
 import helmet from '@fastify/helmet'
@@ -61,7 +62,9 @@ export async function buildApp(jwtSecret: string): Promise<FastifyInstance> {
   app.addHook('onRequest', async (req) => {
     if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return
     if (!req.url.startsWith('/api/')) return
-    if (!originAllowed(req.headers.origin, req.headers.host)) throw new AppError('FORBIDDEN', 403, 'Origin 不被允许')
+    if (!originAllowed(req.headers.origin, req.headers.host, req.headers['sec-fetch-site'])) {
+      throw new AppError('FORBIDDEN', 403, 'Origin 不被允许')
+    }
   })
 
   app.setErrorHandler((err: any, req, reply) => {
@@ -89,14 +92,22 @@ export async function buildApp(jwtSecret: string): Promise<FastifyInstance> {
 
   app.get('/api/health', async () => ({ ok: true }))
 
-  // 生产环境托管前端构建产物，同源部署
+  // 生产环境托管前端构建产物：静态文件、/api、/socket.io 都在同一个端口上
   const hasWeb = fs.existsSync(config.webDist)
   if (hasWeb) {
-    await app.register(fastifyStatic, { root: config.webDist, wildcard: false })
+    await app.register(fastifyStatic, {
+      root: config.webDist,
+      wildcard: false,
+      // vite 产出的文件名带内容哈希，可以放心长缓存；index.html 反过来，部署完要立刻生效
+      setHeaders(reply, filePath) {
+        const hashed = filePath.includes(`${path.sep}assets${path.sep}`)
+        reply.header('cache-control', hashed ? 'public, max-age=31536000, immutable' : 'no-cache')
+      },
+    })
   }
   app.setNotFoundHandler((req, reply) => {
     if (req.method === 'GET' && !req.url.startsWith('/api/') && !req.url.startsWith('/socket.io') && hasWeb) {
-      return reply.type('text/html').sendFile('index.html')
+      return reply.header('cache-control', 'no-cache').type('text/html').sendFile('index.html')
     }
     return reply.status(404).send({ code: 'NOT_FOUND', message: errorMessages.NOT_FOUND })
   })

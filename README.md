@@ -36,8 +36,44 @@ npm run build        # 构建前端到 packages/web/dist
 npm start            # 后端同时托管前端，同源部署
 ```
 
-- **云服务器：** 用 Caddy 反向代理并自动签发证书，`.env` 里设 `COOKIE_SECURE=true`、`TRUST_PROXY=true`。
+部署形态是**单端口**：`npm start` 之后，页面、`/api`、`/socket.io` 全在同一个端口（默认 3000，可用 `.env` 里的 `PORT` 改）上，不需要单独的静态服务器，也没有跨域。开发时分成 5173 + 3000 只是为了热更新，`npm run dev:web` 会把 `/api` 和 `/socket.io` 代理到后端。
+
+`npm run build` 之后不用重启进程，刷新就能拿到新版本（构建产物要在启动时已存在，否则后端退化成只有 API）。
+
+- **云服务器：** 前面放 Caddy 或 nginx 反向代理并签发证书，`.env` 里设 `COOKIE_SECURE=true`、`TRUST_PROXY=true`。
 - **局域网：** 在房主电脑上运行，成员用 `http://<电脑局域网 IP>:3000` 访问。密码和登录 Cookie 在局域网内明文传输，只在可信的网络里使用。
+
+nginx 反向代理示例（`map` 放在 `http {}` 里，`listen` 换成你的端口，全部转给 3000）：
+
+```nginx
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 8443 ssl http2;                             # 不用 80/443 也没问题，端口随便挑
+    server_name party.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;        # /socket.io 走 WebSocket
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+}
+```
+
+关于防 CSRF 的同源校验（`src/http/origin.ts`）：浏览器声明 `Sec-Fetch-Site: same-origin` 的请求直接放行，没有这个头时只比较 Origin 和 Host 的**主机名**，端口和协议不参与比较——所以反代用自己的端口、把 Host 写成 `$host`（不带端口）都不会被拦。只有反代把 Host 改写成了别的域名（比如 `proxy_set_header Host $proxy_host`，后端看到的是 `127.0.0.1:3000`）时，才需要在 `.env` 里加 `ALLOWED_ORIGINS=https://party.example.com`。跨站页面发来的请求（`cross-site` / `same-site`）一律拒绝。
+```
+
+`packages/web/dist/assets/` 下的文件名带内容哈希，后端按 `immutable` 长缓存；`index.html` 是 `no-cache`，所以发版后用户刷新即可。
 
 数据库文件 `data/app.db` 里有明文的网易云 Cookie（小组决定），备份要按敏感数据保管。
 

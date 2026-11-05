@@ -109,6 +109,42 @@ body {
   flex-shrink: 0;
 }
 
+/* ---------- 卡片与输入框 ---------- */
+
+/*
+ * 卡片底色。filled 卡片默认取 surface-container-highest：浅色模式下这是最暗的一档容器色，
+ * 配上从封面取的暖色会发闷，换成浅一档的 surface-container-low；
+ * 深色模式下它本来就是最亮的一档，保持默认即可。两处取的都是现成的色阶，不额外算颜色。
+ */
+.mdui-theme-light mdui-card {
+  --mdui-color-surface-container-highest: var(--mdui-color-surface-container-low);
+}
+@media (prefers-color-scheme: light) {
+  .mdui-theme-auto mdui-card {
+    --mdui-color-surface-container-highest: var(--mdui-color-surface-container-low);
+  }
+}
+
+/*
+ * 卡片就是它内部内容所处的表面。mdui-dialog 的 .panel 也是这么做的：
+ * 把 --mdui-color-background 指向自己，里面的 outlined 输入框才知道该拿什么颜色去挖标签缺口。
+ * 少了这一行，卡片里的浮动标签就会露出一块和卡片对不上的底色。
+ * 圆角顺带调大一档，和队列里的自绘卡片接近。
+ */
+mdui-card {
+  --shape-corner: var(--mdui-shape-corner-large);
+  --mdui-color-background: var(--mdui-color-surface-container-highest);
+}
+
+/*
+ * 输入框统一用 outlined（见各处的 variant 属性）。mdui 没有给 text-field 单独的圆角令牌，
+ * 就用它画边框时引用的 extra-small 这一档；select 内部也是 text-field，一并带上。
+ */
+mdui-text-field,
+mdui-select {
+  --mdui-shape-corner-extra-small: 0.75rem;
+}
+
 a {
   color: rgb(var(--mdui-color-primary));
 }

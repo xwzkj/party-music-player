@@ -45,7 +45,14 @@ watch(() => room.snap?.me.neteaseBound, load)
   <PlaylistTracks v-if="openPlaylist" :playlist="openPlaylist" @back="openPlaylist = null" />
   <div v-else class="stack" style="gap: 8px">
     <div class="row">
-      <mdui-text-field class="spacer" label="粘贴歌单分享链接" :value="link" @input="link = val($event)" @keydown.enter="resolveLink">
+      <mdui-text-field
+        variant="outlined"
+        class="spacer"
+        label="粘贴歌单分享链接"
+        :value="link"
+        @input="link = val($event)"
+        @keydown.enter="resolveLink"
+      >
         <mdui-icon-link slot="icon"></mdui-icon-link>
       </mdui-text-field>
       <mdui-button variant="tonal" @click="resolveLink">打开</mdui-button>

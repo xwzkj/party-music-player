@@ -120,15 +120,31 @@ async function testEmail(): Promise<void> {
         ></mdui-switch>
       </div>
       <div v-if="sys.smtpConfigured" class="row">
-        <mdui-text-field class="spacer" label="测试收件邮箱" :value="testTo" @input="testTo = val($event)" />
+        <mdui-text-field
+          variant="outlined"
+          class="spacer"
+          label="测试收件邮箱"
+          :value="testTo"
+          @input="testTo = val($event)"
+        />
         <mdui-button variant="tonal" @click="testEmail">发测试邮件</mdui-button>
       </div>
     </template>
 
     <div class="title-medium">新建用户</div>
     <div class="row" style="flex-wrap: wrap">
-      <mdui-text-field label="用户名" :value="newUser.username" @input="newUser.username = val($event)" />
-      <mdui-text-field label="初始密码" :value="newUser.password" @input="newUser.password = val($event)" />
+      <mdui-text-field
+        variant="outlined"
+        label="用户名"
+        :value="newUser.username"
+        @input="newUser.username = val($event)"
+      />
+      <mdui-text-field
+        variant="outlined"
+        label="初始密码"
+        :value="newUser.password"
+        @input="newUser.password = val($event)"
+      />
       <mdui-checkbox :checked="newUser.canCreateRoom" @change="newUser.canCreateRoom = checked($event)">可以建房</mdui-checkbox>
       <mdui-button @click="create">创建</mdui-button>
     </div>

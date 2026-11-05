@@ -30,8 +30,15 @@ async function submit(): Promise<void> {
 <template>
   <AuthShell title="欢迎回来" subtitle="大家一起点歌、投票，按得分决定播放顺序。">
     <div class="stack" @keydown.enter="submit">
-      <mdui-text-field label="用户名" :value="username" @input="username = val($event)" autocomplete="username" />
       <mdui-text-field
+        variant="outlined"
+        label="用户名"
+        :value="username"
+        @input="username = val($event)"
+        autocomplete="username"
+      />
+      <mdui-text-field
+        variant="outlined"
         label="密码"
         type="password"
         toggle-password

@@ -1,4 +1,4 @@
-import { AppError, type PlaylistSummary, type QrStatus } from '@pmp/shared'
+import { AppError, type NeteaseBinding, type PlaylistSummary, type QrStatus } from '@pmp/shared'
 import { neteaseRepo } from '../db/netease.ts'
 import type { UserRow } from '../db/users.ts'
 import { logger } from '../infra/logger.ts'
@@ -10,6 +10,26 @@ import { roomStore } from './roomStore.ts'
 /** 二维码 key → 发起绑定的用户；只放内存 */
 const pending = new Map<string, { userId: string; createdAt: number }>()
 const QR_TTL = 5 * 60_000
+
+/** 拿到 Cookie 后保存账号，两种绑定方式共用 */
+async function saveAccount(user: UserRow, cookie: string): Promise<void> {
+  const account = await music.getAccount(cookie)
+  neteaseRepo.upsert({
+    user_id: user.id,
+    netease_uid: account.uid,
+    netease_nickname: account.nickname,
+    vip_type: account.vipType,
+    cookie,
+    updated_at: Date.now(),
+  })
+  void roomService.recheckRoomsOf(user.id).catch((e) => logger.warn({ err: String(e) }, 'recheck failed'))
+}
+
+function bindingOf(user: UserRow): NeteaseBinding {
+  const a = neteaseRepo.get(user.id)
+  if (!a) return { bound: false }
+  return { bound: true, nickname: a.netease_nickname, uid: a.netease_uid, vip: a.vip_type > 0 }
+}
 
 export const neteaseService = {
   async createQr(user: UserRow, showOnHostCode?: string): Promise<{ key: string; qrImage: string }> {
@@ -30,26 +50,27 @@ export const neteaseService = {
     const r = await music.checkLoginQr(key)
     if (r.status === 'success' && r.cookie) {
       pending.delete(key)
-      const account = await music.getAccount(r.cookie)
-      neteaseRepo.upsert({
-        user_id: user.id,
-        netease_uid: account.uid,
-        netease_nickname: account.nickname,
-        vip_type: account.vipType,
-        cookie: r.cookie,
-        updated_at: Date.now(),
-      })
-      void roomService.recheckRoomsOf(user.id).catch((e) => logger.warn({ err: String(e) }, 'recheck failed'))
+      await saveAccount(user, r.cookie)
       return { status: 'success' }
     }
     if (r.status === 'expired') pending.delete(key)
     return { status: r.status }
   },
 
-  me(user: UserRow): { bound: false } | { bound: true; nickname: string; uid: string; vip: boolean } {
-    const a = neteaseRepo.get(user.id)
-    if (!a) return { bound: false }
-    return { bound: true, nickname: a.netease_nickname, uid: a.netease_uid, vip: a.vip_type > 0 }
+  /** 给手机号发登录验证码（不落库，验证码只存在网易云那边） */
+  sendLoginCaptcha(phone: string): Promise<void> {
+    return music.sendLoginCaptcha(phone)
+  },
+
+  /** 手机号 + 验证码绑定，返回绑定后的状态 */
+  async bindByPhone(user: UserRow, phone: string, captcha: string): Promise<NeteaseBinding> {
+    const cookie = await music.loginByPhone(phone, captcha)
+    await saveAccount(user, cookie)
+    return bindingOf(user)
+  },
+
+  me(user: UserRow): NeteaseBinding {
+    return bindingOf(user)
   },
 
   async myPlaylists(user: UserRow): Promise<PlaylistSummary[]> {

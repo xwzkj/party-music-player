@@ -1,4 +1,4 @@
-import type { AudioLevel, PlaylistSummary, RawLyrics, Track } from '@pmp/shared'
+import { AppError, type AudioLevel, type PlaylistSummary, type RawLyrics, type Track } from '@pmp/shared'
 import type { MusicProvider, NeteaseAccount, PlayUrlResult, QrCheckResult } from './provider.ts'
 
 /**
@@ -93,6 +93,16 @@ export class FakeProvider implements MusicProvider {
     if (n < 2) return { status: 'waiting' }
     if (n < 3) return { status: 'confirming' }
     return { status: 'success', cookie: `MUSIC_U=fake_${key}` }
+  }
+
+  /** 假数据源：验证码固定 1234，方便本地联调 */
+  async sendLoginCaptcha(_phone: string): Promise<void> {
+    // 不发短信
+  }
+
+  async loginByPhone(phone: string, captcha: string): Promise<string> {
+    if (captcha !== '1234') throw new AppError('NETEASE_ERROR', 400, '验证码错误（假数据源固定为 1234）')
+    return `MUSIC_U=fake_phone_${phone}`
   }
 
   async getAccount(cookie: string): Promise<NeteaseAccount> {

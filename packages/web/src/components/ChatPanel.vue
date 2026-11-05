@@ -74,6 +74,7 @@ const time = (t: number) => new Date(t).toLocaleTimeString('zh-CN', { hour: '2-d
     </div>
     <div class="row input">
       <mdui-text-field
+        variant="outlined"
         class="spacer"
         placeholder="说点什么"
         maxlength="200"

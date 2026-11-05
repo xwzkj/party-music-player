@@ -44,9 +44,16 @@ async function submit(): Promise<void> {
 <template>
   <AuthShell title="欢迎">
     <div class="muted">开始之前，先设置一个昵称，房间里的其他人会看到它。</div>
-    <mdui-text-field label="昵称" helper="1 到 16 字" :value="nickname" @input="nickname = val($event)" />
+    <mdui-text-field
+      variant="outlined"
+      label="昵称"
+      helper="1 到 16 字"
+      :value="nickname"
+      @input="nickname = val($event)"
+    />
     <template v-if="canRename">
       <mdui-text-field
+        variant="outlined"
         label="用户名"
         helper="管理员可以在首次登录时改一次用户名"
         :value="username"
@@ -56,6 +63,7 @@ async function submit(): Promise<void> {
     <template v-if="needPw">
       <div class="muted">初始密码需要修改后才能继续使用。</div>
       <mdui-text-field
+        variant="outlined"
         label="当前密码"
         type="password"
         :value="oldPassword"
@@ -63,6 +71,7 @@ async function submit(): Promise<void> {
         autocomplete="current-password"
       />
       <mdui-text-field
+        variant="outlined"
         label="新密码"
         type="password"
         helper="8 到 64 位"

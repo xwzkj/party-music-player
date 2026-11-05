@@ -93,6 +93,8 @@ export const music = {
   getUserPlaylists: (cookie: string, uid: string) => provider.getUserPlaylists(cookie, uid),
   createLoginQr: () => provider.createLoginQr(),
   checkLoginQr: (key: string) => provider.checkLoginQr(key),
+  sendLoginCaptcha: (phone: string) => provider.sendLoginCaptcha(phone),
+  loginByPhone: (phone: string, captcha: string) => provider.loginByPhone(phone, captcha),
   getAccount: (cookie: string) => provider.getAccount(cookie),
 }
 

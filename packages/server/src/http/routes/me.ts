@@ -1,11 +1,25 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { changeEmailSchema, changePasswordSchema, changeUsernameSchema, patchMeSchema, roomCodeSchema } from '@pmp/shared'
+import {
+  AppError,
+  changeEmailSchema,
+  changePasswordSchema,
+  changeUsernameSchema,
+  neteaseCaptchaRequestSchema,
+  neteasePhoneLoginSchema,
+  patchMeSchema,
+  roomCodeSchema,
+} from '@pmp/shared'
 import { authService } from '../../auth/authService.ts'
 import { toMeView, usersRepo } from '../../db/users.ts'
+import { limiter } from '../../infra/rateLimit.ts'
 import { neteaseService } from '../../services/neteaseService.ts'
 import { roomService } from '../../services/roomService.ts'
 import { parse, requireUser, setLoginCookie } from '../helpers.ts'
+
+/** 短信验证码有成本，也防止被拿来刷别人手机号 */
+const captchaPerUser = limiter(3, 10 * 60_000)
+const phoneLoginPerUser = limiter(10, 10 * 60_000)
 
 export async function meRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', requireUser)
@@ -48,6 +62,20 @@ export async function meRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/netease/login/qr/:key', async (req) => {
     const p = parse(z.object({ key: z.string().min(1).max(128) }), req.params)
     return neteaseService.checkQr(req.me, p.key)
+  })
+
+  // 手机号 + 短信验证码绑定
+  app.post('/api/netease/login/captcha', async (req) => {
+    const b = parse(neteaseCaptchaRequestSchema, req.body)
+    if (!captchaPerUser.take(req.me.id)) throw new AppError('RATE_LIMITED', 429)
+    await neteaseService.sendLoginCaptcha(b.phone)
+    return { ok: true }
+  })
+
+  app.post('/api/netease/login/phone', async (req) => {
+    const b = parse(neteasePhoneLoginSchema, req.body)
+    if (!phoneLoginPerUser.take(req.me.id)) throw new AppError('RATE_LIMITED', 429)
+    return neteaseService.bindByPhone(req.me, b.phone, b.captcha)
   })
 
   app.get('/api/netease/me', async (req) => neteaseService.me(req.me))

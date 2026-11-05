@@ -25,8 +25,11 @@ export interface MusicProvider {
   getLyrics(id: string): Promise<RawLyrics>
   getUserPlaylists(cookie: string, uid: string): Promise<PlaylistSummary[]>
   getPlaylistTracks(id: string, page: number, cookie?: string): Promise<Track[]>
+  // 登录：扫码 / 手机号 + 短信验证码
   createLoginQr(): Promise<{ key: string; qrImage: string }>
   checkLoginQr(key: string): Promise<QrCheckResult>
+  sendLoginCaptcha(phone: string): Promise<void>
+  loginByPhone(phone: string, captcha: string): Promise<string>
   getAccount(cookie: string): Promise<NeteaseAccount>
 }
 

@@ -47,6 +47,7 @@ function setType(v: 'track' | 'playlist'): void {
   <PlaylistTracks v-if="openPlaylist" :playlist="openPlaylist" @back="openPlaylist = null" />
   <div v-else class="stack" style="gap: 8px">
     <mdui-text-field
+      variant="outlined"
       placeholder="搜索歌曲、歌手或歌单"
       clearable
       :value="q"

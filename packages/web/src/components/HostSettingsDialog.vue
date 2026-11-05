@@ -65,13 +65,14 @@ function setWeight(key: keyof Weights, e: Event): void {
     <div v-if="form" class="stack" style="gap: 12px; min-width: min(420px, 80vw)">
       <div>
         <div class="muted">切歌、上一曲、暂停、继续的投票模式</div>
-        <mdui-select :value="form.voteMode" @change="form.voteMode = val($event) as VoteMode">
+        <mdui-select variant="outlined" :value="form.voteMode" @change="form.voteMode = val($event) as VoteMode">
           <mdui-menu-item value="anyone">任何人</mdui-menu-item>
           <mdui-menu-item value="half">一半以上（至少一半）</mdui-menu-item>
           <mdui-menu-item value="all">所有人</mdui-menu-item>
         </mdui-select>
       </div>
       <mdui-text-field
+        variant="outlined"
         label="每人点歌配额"
         helper="留空表示不限；只统计还在队列里待播的歌"
         type="number"
@@ -96,13 +97,18 @@ function setWeight(key: keyof Weights, e: Event): void {
       </div>
       <div>
         <div class="muted">音质</div>
-        <mdui-select :value="form.audioLevel" @change="form.audioLevel = val($event) as RoomSettings['audioLevel']">
+        <mdui-select
+          variant="outlined"
+          :value="form.audioLevel"
+          @change="form.audioLevel = val($event) as RoomSettings['audioLevel']"
+        >
           <mdui-menu-item value="standard">标准</mdui-menu-item>
           <mdui-menu-item value="exhigh">极高（会员）</mdui-menu-item>
           <mdui-menu-item value="lossless">无损（会员）</mdui-menu-item>
         </mdui-select>
       </div>
       <mdui-text-field
+        variant="outlined"
         label="兜底歌单（链接或 id，可选）"
         helper="队列空了就从里面随机播放"
         :value="fallbackLink"

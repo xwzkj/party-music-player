@@ -75,7 +75,7 @@ async function changeEmail(): Promise<void> {
     <mdui-card variant="filled" class="card-pad stack">
       <div class="title-medium">昵称</div>
       <div class="row">
-        <mdui-text-field class="spacer" :value="nickname" @input="nickname = val($event)" />
+        <mdui-text-field variant="outlined" class="spacer" :value="nickname" @input="nickname = val($event)" />
         <mdui-button variant="tonal" @click="saveNickname">保存</mdui-button>
       </div>
     </mdui-card>
@@ -96,8 +96,15 @@ async function changeEmail(): Promise<void> {
 
     <mdui-card variant="filled" class="card-pad stack">
       <div class="title-medium">修改密码</div>
-      <mdui-text-field label="当前密码" type="password" :value="oldPassword" @input="oldPassword = val($event)" />
       <mdui-text-field
+        variant="outlined"
+        label="当前密码"
+        type="password"
+        :value="oldPassword"
+        @input="oldPassword = val($event)"
+      />
+      <mdui-text-field
+        variant="outlined"
         label="新密码"
         type="password"
         toggle-password
@@ -115,8 +122,14 @@ async function changeEmail(): Promise<void> {
       <div class="muted" v-if="auth.me?.email">
         当前：{{ auth.me.email }}{{ auth.me.emailVerified ? '（已验证）' : '（未验证）' }}
       </div>
-      <mdui-text-field label="新邮箱" type="email" :value="email" @input="email = val($event)" />
-      <mdui-text-field v-if="emailSent" label="验证码" :value="emailCode" @input="emailCode = val($event)" />
+      <mdui-text-field variant="outlined" label="新邮箱" type="email" :value="email" @input="email = val($event)" />
+      <mdui-text-field
+        v-if="emailSent"
+        variant="outlined"
+        label="验证码"
+        :value="emailCode"
+        @input="emailCode = val($event)"
+      />
       <div class="row">
         <span class="spacer"></span>
         <mdui-button variant="tonal" @click="changeEmail">

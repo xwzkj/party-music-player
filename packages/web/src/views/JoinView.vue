@@ -50,6 +50,7 @@ async function join(): Promise<void> {
     </template>
     <template v-else>
       <mdui-text-field
+        variant="outlined"
         label="房间口令"
         :value="passcode"
         @input="passcode = val($event)"

@@ -69,6 +69,7 @@ async function submit(): Promise<void> {
   <AuthShell title="创建账号">
     <div class="stack" @keydown.enter="submit">
       <mdui-text-field
+        variant="outlined"
         label="用户名"
         helper="3 到 20 位字母、数字或下划线，注册后不能修改"
         :value="username"
@@ -76,6 +77,7 @@ async function submit(): Promise<void> {
         autocomplete="username"
       />
       <mdui-text-field
+        variant="outlined"
         label="密码"
         type="password"
         helper="8 到 64 位"
@@ -85,6 +87,7 @@ async function submit(): Promise<void> {
         autocomplete="new-password"
       />
       <mdui-text-field
+        variant="outlined"
         label="确认密码"
         type="password"
         :value="password2"
@@ -92,6 +95,7 @@ async function submit(): Promise<void> {
         autocomplete="new-password"
       />
       <mdui-text-field
+        variant="outlined"
         :label="verify ? '邮箱' : '邮箱（可选）'"
         type="email"
         :value="email"
@@ -100,7 +104,13 @@ async function submit(): Promise<void> {
       />
       <TurnstileWidget v-if="turnstile" ref="ts" :site-key="auth.config.turnstileSiteKey!" @token="turnstileToken = $event" />
       <div v-if="verify" class="row">
-        <mdui-text-field class="spacer" label="邮箱验证码" :value="emailCode" @input="emailCode = val($event)" />
+        <mdui-text-field
+          variant="outlined"
+          class="spacer"
+          label="邮箱验证码"
+          :value="emailCode"
+          @input="emailCode = val($event)"
+        />
         <mdui-button variant="tonal" :disabled="cooldown > 0" @click="sendCode">
           {{ cooldown > 0 ? `${cooldown} 秒` : '发送验证码' }}
         </mdui-button>
