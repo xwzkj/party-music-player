@@ -8,10 +8,11 @@ import NowPlayingSheet from '../components/NowPlayingSheet.vue'
 import PlayerBar from '../components/PlayerBar.vue'
 import PlaylistsPanel from '../components/PlaylistsPanel.vue'
 import QueueSheet from '../components/QueueSheet.vue'
+import RoomInfoDialog from '../components/RoomInfoDialog.vue'
 import SearchPanel from '../components/SearchPanel.vue'
 import { useRoom } from '../stores/room'
 import { applyCoverColor } from '../theme'
-import { ask, checked, toast, val } from '../ui'
+import { ask, checked, copyText, toast, val } from '../ui'
 
 const props = defineProps<{ code: string }>()
 const router = useRouter()
@@ -21,7 +22,7 @@ const showPlayer = ref(false)
 const showQueue = ref(false)
 const showSettings = ref(false)
 const showMembers = ref(false)
-const showPasscode = ref(false)
+const showRoomInfo = ref(false)
 let decided = false
 
 const s = computed(() => room.snap)
@@ -65,59 +66,61 @@ async function toggleListening(e: Event): Promise<void> {
   ;(e.target as HTMLInputElement).checked = room.listening
 }
 
-async function resetPasscode(): Promise<void> {
-  if (!(await ask('重置口令？', '已经加入的人不受影响。'))) return
-  const r = await room.act<{ passcode: string }>('host:resetPasscode', {})
-  if (r) toast(`新口令：${r.passcode}`)
-}
-
-async function closeRoom(): Promise<void> {
-  if (!(await ask('关闭房间？', '队列和聊天记录会被删除，所有人都会退出。', '关闭'))) return
-  await room.act('host:close', {})
-}
-
 async function leaveRoom(): Promise<void> {
   if (!(await ask('离开房间？', '离开后再回来不用重新输入口令。'))) return
   await room.leave()
   await router.replace('/')
 }
 
-function goHome(): void {
+/** 左上角的 home：先确认，避免误触把房间页面关掉 */
+async function goHome(): Promise<void> {
+  if (!(await ask('退出房间？', '回到首页后需要重新输入口令才能进来。', '退出'))) return
+  await router.replace('/')
+}
+
+/** 房间已经关了/被踢时直接回首页 */
+function backHome(): void {
   void router.replace('/')
 }
 
-function copyInvite(): void {
+async function copyInvite(): Promise<void> {
   const text = `${location.origin}/r/${props.code}`
-  navigator.clipboard?.writeText(text).then(
-    () => toast('邀请链接已复制'),
-    () => toast(text),
-  )
+  if (await copyText(text)) toast('邀请链接已复制')
+  else toast(text)
+}
+
+// 播放页里的入口：先收起播放页，再打开目标
+function openQueueFromPlayer(): void {
+  showPlayer.value = false
+  showQueue.value = true
+}
+
+function openChatFromPlayer(): void {
+  showPlayer.value = false
+  tab.value = 'chat'
 }
 </script>
 
 <template>
   <mdui-layout class="room-layout">
     <mdui-top-app-bar>
-      <mdui-button-icon @click="goHome"><mdui-icon-home></mdui-icon-home></mdui-button-icon>
-      <mdui-top-app-bar-title @click="copyInvite" style="cursor: pointer" title="点击复制邀请链接">
-        <span class="code">{{ code }}</span>
-        <span class="muted">{{ room.presentCount }} 人在场</span>
-      </mdui-top-app-bar-title>
-      <div class="row listen" title="本机出声">
-        <mdui-icon-headphones></mdui-icon-headphones>
-        <mdui-switch :checked="room.listening" @change="toggleListening"></mdui-switch>
-      </div>
+      <mdui-button-icon title="退出房间" @click="goHome"><mdui-icon-home></mdui-icon-home></mdui-button-icon>
+      <mdui-top-app-bar-title>{{ room.presentCount }} 人在场</mdui-top-app-bar-title>
       <mdui-dropdown placement="bottom-end">
-        <mdui-button-icon slot="trigger"><mdui-icon-more-vert></mdui-icon-more-vert></mdui-button-icon>
+        <mdui-button-icon slot="trigger" title="更多"><mdui-icon-more-vert></mdui-icon-more-vert></mdui-button-icon>
         <mdui-menu>
           <mdui-menu-item @click="showMembers = true">成员{{ room.isHost ? '与禁入' : '' }}</mdui-menu-item>
+          <mdui-menu-item @click="showRoomInfo = true">房间信息</mdui-menu-item>
           <mdui-menu-item @click="copyInvite">复制邀请链接</mdui-menu-item>
-          <template v-if="room.isHost">
-            <mdui-menu-item @click="showSettings = true">房间设置</mdui-menu-item>
-            <mdui-menu-item @click="showPasscode = true">显示口令</mdui-menu-item>
-            <mdui-menu-item @click="resetPasscode">重置口令</mdui-menu-item>
-            <mdui-menu-item @click="closeRoom">关闭房间</mdui-menu-item>
-          </template>
+          <mdui-menu-item class="listen-item">
+            <span class="row listen" @click.stop @pointerdown.stop>
+              <mdui-icon-headphones></mdui-icon-headphones>
+              <span>本机出声</span>
+              <span class="spacer"></span>
+              <mdui-switch :checked="room.listening" @change="toggleListening" @click.stop></mdui-switch>
+            </span>
+          </mdui-menu-item>
+          <mdui-menu-item v-if="room.isHost" @click="showSettings = true">房间设置</mdui-menu-item>
           <mdui-menu-item v-else @click="leaveRoom">离开房间</mdui-menu-item>
         </mdui-menu>
       </mdui-dropdown>
@@ -150,16 +153,16 @@ function copyInvite(): void {
     </mdui-layout-main>
   </mdui-layout>
 
-  <NowPlayingSheet :open="showPlayer" @close="showPlayer = false" />
+  <NowPlayingSheet
+    :open="showPlayer"
+    @close="showPlayer = false"
+    @open-queue="openQueueFromPlayer"
+    @open-chat="openChatFromPlayer"
+  />
   <QueueSheet :open="showQueue" @close="showQueue = false" />
+  <RoomInfoDialog :open="showRoomInfo" :code="code" @close="showRoomInfo = false" />
   <HostSettingsDialog v-if="room.isHost" :open="showSettings" @close="showSettings = false" />
   <MembersDialog :open="showMembers" @close="showMembers = false" />
-
-  <mdui-dialog :open="showPasscode" headline="房间口令" close-on-overlay-click @close.self="showPasscode = false">
-    <div class="passcode">{{ s?.host?.passcode }}</div>
-    <div class="muted">房间号 {{ code }}</div>
-    <mdui-button slot="action" variant="text" @click="showPasscode = false">关闭</mdui-button>
-  </mdui-dialog>
 
   <mdui-dialog
     :open="!!room.hostQr"
@@ -176,7 +179,7 @@ function copyInvite(): void {
 
   <mdui-dialog :open="!!room.closedReason" headline="提示">
     {{ room.closedReason }}
-    <mdui-button slot="action" @click="goHome">回到首页</mdui-button>
+    <mdui-button slot="action" @click="backHome">回到首页</mdui-button>
   </mdui-dialog>
 </template>
 
@@ -204,13 +207,9 @@ function copyInvite(): void {
   overflow: hidden;
 }
 .listen {
-  gap: 4px;
-  margin-right: 4px;
-}
-.code {
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  margin-right: 8px;
+  gap: 12px;
+  width: 100%;
+  min-width: 180px;
 }
 .banner {
   margin: 8px auto 0;
@@ -229,12 +228,5 @@ function copyInvite(): void {
   background: rgb(var(--mdui-color-primary-container));
   color: rgb(var(--mdui-color-on-primary-container));
   cursor: pointer;
-}
-.passcode {
-  font-size: 2.5rem;
-  font-weight: 500;
-  letter-spacing: 4px;
-  text-align: center;
-  padding: 16px 0;
 }
 </style>

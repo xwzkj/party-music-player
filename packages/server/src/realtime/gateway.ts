@@ -285,10 +285,10 @@ export function attachRealtime(app: FastifyInstance): IO {
       chatService.delete(room, p.messageId)
     })
 
-    on('host:resetPasscode', (_p, user) => {
+    on('host:resetPasscode', (p: { passcode?: string }, user) => {
       const room = currentRoom()
       requireHost(room, user)
-      return { passcode: roomService.resetPasscode(room) }
+      return { passcode: roomService.resetPasscode(room, p.passcode) }
     })
 
     on('host:close', (_p, user) => {

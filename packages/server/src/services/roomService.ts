@@ -295,8 +295,9 @@ export const roomService = {
     markChanged(room)
   },
 
-  resetPasscode(room: RoomRuntime): string {
-    room.passcode = randomDigits(4)
+  /** 房主改口令：传了就用传的，没传就随机生成 4 位 */
+  resetPasscode(room: RoomRuntime, passcode?: string): string {
+    room.passcode = passcode ?? randomDigits(4)
     roomsRepo.setPasscode(room.id, room.passcode)
     markChanged(room)
     return room.passcode

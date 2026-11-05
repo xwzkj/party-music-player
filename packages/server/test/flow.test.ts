@@ -160,6 +160,17 @@ describe('full flow', () => {
     expect(sa.host).toBeUndefined()
   })
 
+  it('host can change the passcode to a custom one', async () => {
+    const tooShort = await host.emit('host:resetPasscode', { passcode: 'x' })
+    expect(tooShort.ok).toBe(false)
+    const r = await host.emit<{ passcode: string }>('host:resetPasscode', { passcode: 'xyz9' })
+    expect(r.ok).toBe(true)
+    expect(r.ok && r.data.passcode).toBe('xyz9')
+    const s = await host.waitFor((s) => s.host?.passcode === 'xyz9')
+    expect(s.host?.passcode).toBe('xyz9')
+    passcode = 'xyz9'
+  })
+
   it('queues songs, merges duplicates, and ranks by votes', async () => {
     const r1 = await a.emit<{ itemId: string }>('queue:add', { sourceId: '100001' })
     const r2 = await b.emit<{ itemId: string }>('queue:add', { sourceId: '100002' })

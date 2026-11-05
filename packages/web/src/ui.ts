@@ -26,6 +26,38 @@ export function val(e: Event): string {
   return String((e.target as HTMLInputElement).value ?? '')
 }
 
+/**
+ * 复制文本。navigator.clipboard 只在安全上下文（https 或 localhost）里可用，
+ * 用局域网 IP 走 http 打开时会是 undefined，这时退回 textarea + execCommand。
+ */
+export async function copyText(text: string): Promise<boolean> {
+  if (window.isSecureContext && navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch {
+      /* 权限被拒时继续走老办法 */
+    }
+  }
+  const area = document.createElement('textarea')
+  area.value = text
+  area.setAttribute('readonly', '')
+  area.style.position = 'fixed'
+  area.style.top = '-1000px'
+  area.style.opacity = '0'
+  document.body.appendChild(area)
+  area.select()
+  area.setSelectionRange(0, text.length)
+  let ok = false
+  try {
+    ok = document.execCommand('copy')
+  } catch {
+    ok = false
+  }
+  area.remove()
+  return ok
+}
+
 export function checked(e: Event): boolean {
   return !!(e.target as HTMLInputElement).checked
 }

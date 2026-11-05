@@ -69,7 +69,7 @@ watch(() => room.snap?.me.neteaseBound, load)
           @click="openPlaylist = p"
         >
           <img v-if="p.coverUrl" slot="icon" class="cover" :src="coverSrc(p.coverUrl, 96)" width="40" height="40" alt="" />
-          {{ p.name }}
+          <span class="ellipsis">{{ p.name }}</span>
         </mdui-list-item>
       </mdui-list>
     </template>

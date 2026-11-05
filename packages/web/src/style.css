@@ -90,9 +90,13 @@ body {
   text-align: center;
 }
 .ellipsis {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* 当 flex 子项时要能收缩，否则长标题会把整行撑开 */
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* mdui-card 只负责外观；内边距由使用方给 */

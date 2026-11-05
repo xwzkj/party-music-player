@@ -7,9 +7,12 @@ import { coverSrc, fmtTime, val } from '../ui'
 import FullscreenSheet from './FullscreenSheet.vue'
 import PlaybackButtons from './PlaybackButtons.vue'
 
-/** 播放页：两页切换，"歌曲"是封面和信息，"歌词"是逐字歌词；进度和控制按钮两页共用 */
+/**
+ * 播放页。两页切换："歌曲"是封面和信息，"歌词"是逐字歌词；进度和控制按钮两页共用。
+ * 点封面进歌词、点歌词回封面，头部也有一个切换按钮。
+ */
 const props = defineProps<{ open: boolean }>()
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; openQueue: []; openChat: [] }>()
 const room = useRoom()
 const prefs = usePrefs()
 const page = ref<'song' | 'lyrics'>('song')
@@ -36,7 +39,10 @@ watch(
   () => props.open,
   (open) => {
     cancelAnimationFrame(raf)
-    if (open) raf = requestAnimationFrame(frame)
+    if (open) {
+      page.value = 'song'
+      raf = requestAnimationFrame(frame)
+    }
   },
   { immediate: true },
 )
@@ -50,12 +56,8 @@ async function onSeekChange(e: Event): Promise<void> {
   seeking = false
   await room.act('host:playback', { action: 'seek', positionMs: ms })
 }
-function onVolume(e: Event): void {
-  room.setVolume(Number(val(e)) / 100)
-}
-function onTab(e: Event): void {
-  const v = val(e)
-  if (v === 'song' || v === 'lyrics') page.value = v
+function togglePage(): void {
+  page.value = page.value === 'song' ? 'lyrics' : 'song'
 }
 </script>
 
@@ -66,18 +68,25 @@ function onTab(e: Event): void {
         <mdui-button-icon title="收起" @click="emit('close')">
           <mdui-icon-keyboard-arrow-down></mdui-icon-keyboard-arrow-down>
         </mdui-button-icon>
-        <mdui-tabs class="tabs" :value="page" @change="onTab">
-          <mdui-tab value="song">歌曲</mdui-tab>
-          <mdui-tab value="lyrics">歌词</mdui-tab>
-        </mdui-tabs>
+        <span class="spacer"></span>
+        <mdui-button-icon :title="page === 'song' ? '看歌词' : '看封面'" @click="togglePage">
+          <mdui-icon-lyrics v-if="page === 'song'"></mdui-icon-lyrics>
+          <mdui-icon-music-note v-else></mdui-icon-music-note>
+        </mdui-button-icon>
         <mdui-button-icon
-          :style="{ visibility: page === 'lyrics' ? 'visible' : 'hidden' }"
+          v-if="page === 'lyrics'"
           :selected="prefs.showTranslation"
           selectable
           title="显示翻译"
           @change="prefs.showTranslation = !prefs.showTranslation"
         >
           <mdui-icon-translate></mdui-icon-translate>
+        </mdui-button-icon>
+        <mdui-button-icon title="播放列表" @click="emit('openQueue')">
+          <mdui-icon-queue-music></mdui-icon-queue-music>
+        </mdui-button-icon>
+        <mdui-button-icon title="聊天" @click="emit('openChat')">
+          <mdui-icon-chat></mdui-icon-chat>
         </mdui-button-icon>
       </div>
     </template>
@@ -89,7 +98,7 @@ function onTab(e: Event): void {
             <img v-if="track.coverUrl" class="cover art" :src="coverSrc(track.coverUrl, 600)" alt="" />
             <div v-else class="cover art placeholder"><mdui-icon-music-note></mdui-icon-music-note></div>
           </div>
-          <div v-else key="lyrics" class="lyrics">
+          <div v-else key="lyrics" class="lyrics" @click="page = 'song'">
             <LyricsView :source-id="track.sourceId" :duration-ms="track.durationMs" :show-translation="prefs.showTranslation" />
           </div>
         </Transition>
@@ -125,10 +134,6 @@ function onTab(e: Event): void {
           <span>{{ fmtTime(duration) }}</span>
         </div>
         <PlaybackButtons />
-        <div class="row volume">
-          <mdui-icon-volume-up></mdui-icon-volume-up>
-          <mdui-slider class="spacer" :value="Math.round(prefs.volume * 100)" max="100" nolabel @input="onVolume"></mdui-slider>
-        </div>
       </div>
     </div>
     <div v-else class="muted center empty">现在没有在播放</div>
@@ -140,9 +145,6 @@ function onTab(e: Event): void {
   max-width: 560px;
   margin: 0 auto;
   gap: 0;
-}
-.tabs {
-  flex: 1;
 }
 .np {
   flex: 1;
@@ -174,6 +176,7 @@ function onTab(e: Event): void {
   max-height: 100%;
   aspect-ratio: 1;
   border-radius: var(--mdui-shape-corner-extra-large);
+  pointer-events: none;
 }
 .song {
   container-type: size;
@@ -187,6 +190,7 @@ function onTab(e: Event): void {
 .lyrics {
   flex: 1;
   min-height: 0;
+  cursor: pointer;
 }
 .meta {
   display: flex;
@@ -201,10 +205,6 @@ function onTab(e: Event): void {
 .times {
   margin-top: -8px;
   padding: 0 4px;
-}
-.volume {
-  padding: 0 4px;
-  color: rgb(var(--mdui-color-on-surface-variant));
 }
 .empty {
   padding: 64px 0;

@@ -22,7 +22,7 @@ export interface ClientToServerEvents {
   'host:kick': (p: { userId: string; ban: boolean }, cb: Cb) => void
   'host:unban': (p: { userId: string }, cb: Cb) => void
   'host:chatDelete': (p: { messageId: string }, cb: Cb) => void
-  'host:resetPasscode': (p: Record<string, never>, cb: Cb<{ passcode: string }>) => void
+  'host:resetPasscode': (p: { passcode?: string }, cb: Cb<{ passcode: string }>) => void
   'host:close': (p: Record<string, never>, cb: Cb) => void
 }
 

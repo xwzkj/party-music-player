@@ -18,7 +18,7 @@ async function kick(id: string, nickname: string, ban: boolean): Promise<void> {
 
 <template>
   <mdui-dialog :open="open" headline="成员与禁入" close-on-overlay-click @close.self="emit('close')">
-    <mdui-list style="min-width: min(420px, 80vw)">
+    <mdui-list class="list">
       <mdui-list-item v-for="m in members" :key="m.id" nonclickable>
         {{ m.nickname }}
         <span slot="description">
@@ -42,3 +42,10 @@ async function kick(id: string, nickname: string, ban: boolean): Promise<void> {
     <mdui-button slot="action" variant="text" @click="emit('close')">关闭</mdui-button>
   </mdui-dialog>
 </template>
+
+<style scoped>
+.list {
+  width: min(420px, 100%);
+  box-sizing: border-box;
+}
+</style>

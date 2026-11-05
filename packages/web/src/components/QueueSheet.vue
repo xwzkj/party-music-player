@@ -14,9 +14,11 @@ const s = computed(() => room.snap)
   <FullscreenSheet :open="open" label="播放列表" @close="emit('close')">
     <template #header>
       <div class="row header">
+        <mdui-button-icon title="收起" @click="emit('close')">
+          <mdui-icon-keyboard-arrow-down></mdui-icon-keyboard-arrow-down>
+        </mdui-button-icon>
         <div class="title-large spacer">播放列表</div>
-        <span class="muted" v-if="s?.me.quotaLimit != null">已点 {{ s.me.quotaUsed }}/{{ s.me.quotaLimit }}</span>
-        <mdui-button-icon title="关闭" @click="emit('close')"><mdui-icon-close></mdui-icon-close></mdui-button-icon>
+        <span class="muted quota" v-if="s?.me.quotaLimit != null">已点 {{ s.me.quotaUsed }}/{{ s.me.quotaLimit }}</span>
       </div>
     </template>
 
@@ -41,7 +43,10 @@ const s = computed(() => room.snap)
 .header {
   max-width: 640px;
   margin: 0 auto;
-  padding: 0 8px 0 16px;
+  gap: 0;
+}
+.quota {
+  padding-right: 16px;
 }
 .wrap {
   flex: 1;

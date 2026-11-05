@@ -62,7 +62,7 @@ function setWeight(key: keyof Weights, e: Event): void {
 
 <template>
   <mdui-dialog :open="open" headline="房间设置" close-on-overlay-click @close.self="emit('close')">
-    <div v-if="form" class="stack" style="gap: 12px; min-width: min(420px, 80vw)">
+    <div v-if="form" class="form stack">
       <div>
         <div class="muted">切歌、上一曲、暂停、继续的投票模式</div>
         <mdui-select variant="outlined" :value="form.voteMode" @change="form.voteMode = val($event) as VoteMode">
@@ -81,10 +81,10 @@ function setWeight(key: keyof Weights, e: Event): void {
       />
       <div>
         <div class="muted">排序权重（按比例）</div>
-        <div v-for="w in weightLabels" :key="w.key" class="row">
-          <span style="width: 120px">{{ w.label }}</span>
+        <div v-for="w in weightLabels" :key="w.key" class="row weight">
+          <span class="weight-label">{{ w.label }}</span>
           <mdui-slider class="spacer" :value="Math.round(form.weights[w.key] * 10)" max="100" @change="setWeight(w.key, $event)"></mdui-slider>
-          <span style="width: 32px; text-align: right">{{ form.weights[w.key].toFixed(1) }}</span>
+          <span class="weight-value">{{ form.weights[w.key].toFixed(1) }}</span>
         </div>
       </div>
       <div class="row">
@@ -119,3 +119,35 @@ function setWeight(key: keyof Weights, e: Event): void {
     <mdui-button slot="action" :loading="saving" @click="save">保存</mdui-button>
   </mdui-dialog>
 </template>
+
+<style scoped>
+.form {
+  gap: 12px;
+  width: min(420px, 100%);
+  min-width: 0;
+  box-sizing: border-box;
+}
+.weight {
+  gap: 8px;
+}
+.weight-label {
+  width: 120px;
+  flex-shrink: 0;
+}
+.weight-value {
+  width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+}
+/* 窄屏把标签列压窄，避免滑块和数字被挤出去 */
+@media (max-width: 420px) {
+  .weight-label {
+    width: 84px;
+    font-size: 0.875rem;
+  }
+  .weight-value {
+    width: 28px;
+    font-size: 0.875rem;
+  }
+}
+</style>

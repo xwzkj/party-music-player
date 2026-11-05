@@ -1,6 +1,9 @@
 import { z } from 'zod'
 
-export const usernameSchema = z.string().regex(/^[A-Za-z0-9_]{3,20}$/, '用户名为 3 到 20 位字母、数字或下划线')
+export const usernameSchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9_]{3,20}$/, '用户名为 3 到 20 位字母、数字或下划线')
 export const passwordSchema = z.string().min(8, '密码至少 8 位').max(64, '密码最多 64 位')
 export const nicknameSchema = z.string().trim().min(1, '昵称不能为空').max(16, '昵称最多 16 字')
 export const emailSchema = z.string().trim().email('邮箱格式不正确').max(254)
@@ -25,7 +28,7 @@ export const registerSchema = z.object({
 })
 
 export const loginSchema = z.object({
-  username: z.string().min(1).max(64),
+  username: z.string().trim().min(1).max(64),
   password: z.string().min(1).max(64),
 })
 
@@ -122,6 +125,6 @@ export const socketSchemas = {
   'host:kick': z.object({ userId: idSchema, ban: z.boolean() }),
   'host:unban': z.object({ userId: idSchema }),
   'host:chatDelete': z.object({ messageId: idSchema }),
-  'host:resetPasscode': z.object({}).passthrough(),
+  'host:resetPasscode': z.object({ passcode: passcodeSchema.optional() }).passthrough(),
   'host:close': z.object({}).passthrough(),
 } as const
