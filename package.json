@@ -1,0 +1,26 @@
+{
+  "name": "party-music-player",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/shared",
+    "packages/server",
+    "packages/web"
+  ],
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev:server": "npm run dev -w @pmp/server",
+    "dev:web": "npm run dev -w @pmp/web",
+    "build": "npm run build -w @pmp/web",
+    "start": "npm run start -w @pmp/server",
+    "typecheck": "npm run typecheck -w @pmp/shared && npm run typecheck -w @pmp/server && npm run typecheck -w @pmp/web",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "5.9.3",
+    "vitest": "4.1.12"
+  }
+}

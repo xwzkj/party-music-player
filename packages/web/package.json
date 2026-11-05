@@ -1,0 +1,26 @@
+{
+  "name": "@pmp/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mdui/icons": "1.0.4",
+    "@pmp/shared": "0.1.0",
+    "mdui": "2.1.5",
+    "pinia": "3.0.4",
+    "socket.io-client": "4.8.4",
+    "vue": "3.5.44",
+    "vue-router": "4.6.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "6.0.10",
+    "vite": "8.3.6",
+    "vue-tsc": "3.3.14"
+  }
+}

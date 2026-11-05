@@ -1,0 +1,143 @@
+/*
+ * 主题只通过 mdui 的公开接口定制：设计令牌（颜色、圆角、字体、动效）和组件属性。
+ * 不用 ::part 改组件内部，也不覆盖组件自身的样式。
+ */
+:root {
+  /* MD3 的 emphasized 缓动曲线；mdui 把它等同于 standard，这里补上规范值，供自绘组件使用 */
+  --app-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --app-easing-emphasized-decelerate: var(--mdui-motion-easing-emphasized-decelerate);
+  --app-easing-emphasized-accelerate: var(--mdui-motion-easing-emphasized-accelerate);
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: Roboto, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  background: rgb(var(--mdui-color-background));
+  color: rgb(var(--mdui-color-on-background));
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* ---------- MD3 字体层级（引用 mdui 的 typescale 令牌） ---------- */
+
+.display-small {
+  font-size: var(--mdui-typescale-display-small-size);
+  line-height: var(--mdui-typescale-display-small-line-height);
+  font-weight: var(--mdui-typescale-display-small-weight);
+  letter-spacing: var(--mdui-typescale-display-small-tracking);
+}
+.headline-small {
+  font-size: var(--mdui-typescale-headline-small-size);
+  line-height: var(--mdui-typescale-headline-small-line-height);
+  font-weight: var(--mdui-typescale-headline-small-weight);
+}
+.title-large {
+  font-size: var(--mdui-typescale-title-large-size);
+  line-height: var(--mdui-typescale-title-large-line-height);
+  font-weight: var(--mdui-typescale-title-large-weight);
+}
+.title-medium {
+  font-size: var(--mdui-typescale-title-medium-size);
+  line-height: var(--mdui-typescale-title-medium-line-height);
+  font-weight: var(--mdui-typescale-title-medium-weight);
+  letter-spacing: var(--mdui-typescale-title-medium-tracking);
+}
+.body-medium,
+.muted {
+  font-size: var(--mdui-typescale-body-medium-size);
+  line-height: var(--mdui-typescale-body-medium-line-height);
+  letter-spacing: var(--mdui-typescale-body-medium-tracking);
+}
+.label-large {
+  font-size: var(--mdui-typescale-label-large-size);
+  line-height: var(--mdui-typescale-label-large-line-height);
+  font-weight: var(--mdui-typescale-label-large-weight);
+}
+.muted {
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+/* ---------- 布局 ---------- */
+
+.page {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px 16px 48px;
+  box-sizing: border-box;
+}
+.page-wide {
+  max-width: 960px;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.spacer {
+  flex: 1;
+}
+.center {
+  text-align: center;
+}
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* mdui-card 只负责外观；内边距由使用方给 */
+.card-pad {
+  padding: 16px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.cover {
+  border-radius: var(--mdui-shape-corner-small);
+  object-fit: cover;
+  background: rgb(var(--mdui-color-surface-container-highest));
+  flex-shrink: 0;
+}
+
+a {
+  color: rgb(var(--mdui-color-primary));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/*
+ * MD3 淡入淡出切换（fade through），用于互不相关的页面之间切换：
+ * 旧内容 90ms 淡出，新内容 210ms 淡入并从 92% 放大。配合 <Transition mode="out-in">。
+ */
+.fade-through-leave-active {
+  transition: opacity 90ms var(--app-easing-emphasized-accelerate);
+}
+.fade-through-enter-active {
+  transition:
+    opacity 210ms var(--app-easing-emphasized-decelerate),
+    transform 210ms var(--app-easing-emphasized-decelerate);
+}
+.fade-through-leave-to,
+.fade-through-enter-from {
+  opacity: 0;
+}
+.fade-through-enter-from {
+  transform: scale(0.92);
+}
