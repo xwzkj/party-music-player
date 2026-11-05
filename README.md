@@ -89,3 +89,12 @@ packages/server   Fastify + Socket.IO + node:sqlite
   src/music       网易云适配层、假音乐源、封面代理
 packages/web      Vue 3 + Vite + Pinia + mdui 2
 ```
+
+## 本机部署（wanzii-home-server）
+
+- 源码 `/home/wanzii/code/party-music-player`，运行副本 `/opt/wanzii/party-music-player`（拷贝部署）；数据在 `data/`（`app.db` 含明文网易云 Cookie，目录 0700）。
+- 服务单元 `party-music-player.service`，`.env` 设 `HOST=::`、`PORT=8095`，双栈监听 `[::]:8095`。
+- 单元设置 `TMPDIR=data/tmp`，`ExecStartPre` 运行 `scripts/prepare-netease.cjs`，补齐网易云接口库需要的 `xeapi_public_key` 与 `anonymous_token`；缺公钥时搜索能用，但播放地址会报 `xeapi public key is missing`。
+- 首次启动的管理员密码只在 journal 里打印一次：`sudo journalctl -u party-music-player -n 50 | grep -A3 已创建管理员账号`，登录后立即修改。
+- 防火墙只放行 IPv6：`sudo ufw allow from ::/0 to any port 8095 proto tcp`。公网访问是纯 HTTP，密码和登录 Cookie 明文传输；正式对外使用前应加 TLS 反向代理。
+- 更新：在源码目录 `npm install && npm run build`，把仓库文件覆盖到运行目录（排除 `node_modules`、`.git`、`data`、`.env`），在运行目录 `npm ci --omit=dev`，再 `sudo systemctl restart party-music-player`。
