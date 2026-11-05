@@ -23,13 +23,18 @@ const showQueue = ref(false)
 const showSettings = ref(false)
 const showMembers = ref(false)
 const showRoomInfo = ref(false)
+const unread = ref(0)
 let decided = false
+/** 已处理过的最后一条聊天，避免首次加载历史时弹一堆提醒 */
+let lastChatId: string | null = null
+let lastToastAt = 0
 
 const s = computed(() => room.snap)
 const panes = { search: SearchPanel, playlists: PlaylistsPanel, chat: ChatPanel }
 
 onMounted(() => void room.open(props.code))
 onBeforeUnmount(() => {
+  document.title = '聚会音乐播放器'
   room.detach()
   void applyCoverColor(null)
 })
@@ -58,6 +63,49 @@ function setTab(e: Event): void {
   const v = val(e)
   if (v === 'search' || v === 'playlists' || v === 'chat') tab.value = v
 }
+
+// 不在聊天页时，别人发的新消息用 toast + 未读徽标提醒
+watch(
+  () => room.chats.length,
+  (len, prevLen) => {
+    if (!len) {
+      // 离开房间或切换房间时数组会清空，重置基线，免得把下个房间的历史当成新消息
+      lastChatId = null
+      return
+    }
+    // 删除消息会让长度变小，不是新消息
+    if (prevLen !== undefined && len < prevLen) return
+    const m = room.chats[len - 1]
+    if (!m) return
+    if (lastChatId === null) {
+      // 首次加载房间历史：记住最后一条，但不提醒
+      lastChatId = m.id
+      return
+    }
+    if (m.id === lastChatId) return
+    lastChatId = m.id
+    if (m.kind !== 'user' || !m.userId || m.userId === room.snap?.me.userId) return
+    if (tab.value === 'chat') return
+    unread.value++
+    // 页面在后台时只记未读，回来不会一口气弹一串
+    if (document.visibilityState !== 'visible') return
+    const now = Date.now()
+    if (now - lastToastAt < 1500) return
+    lastToastAt = now
+    const preview = m.content.replace(/\s+/g, ' ').trim().slice(0, 40)
+    toast(`${m.nickname ?? '有人'}：${preview}`)
+  },
+)
+
+watch(tab, (v) => {
+  if (v === 'chat') unread.value = 0
+})
+
+// 页面在后台时也能从标签页标题看到未读数
+const baseTitle = '聚会音乐播放器'
+watch(unread, (n) => {
+  document.title = n > 0 ? `(${n}) ${baseTitle}` : baseTitle
+})
 
 async function toggleListening(e: Event): Promise<void> {
   const on = checked(e)
@@ -131,7 +179,11 @@ function openChatFromPlayer(): void {
       <mdui-navigation-bar-item value="playlists">
         <mdui-icon-library-music slot="icon"></mdui-icon-library-music>我的歌单
       </mdui-navigation-bar-item>
-      <mdui-navigation-bar-item value="chat"><mdui-icon-chat slot="icon"></mdui-icon-chat>聊天</mdui-navigation-bar-item>
+      <mdui-navigation-bar-item value="chat">
+        <mdui-icon-chat slot="icon"></mdui-icon-chat>
+        聊天
+        <mdui-badge v-if="unread > 0" slot="badge" variant="large">{{ unread > 99 ? '99+' : unread }}</mdui-badge>
+      </mdui-navigation-bar-item>
     </mdui-navigation-bar>
 
     <mdui-layout-item placement="bottom">

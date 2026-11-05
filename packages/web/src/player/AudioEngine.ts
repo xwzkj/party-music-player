@@ -1,13 +1,11 @@
 import type { Timeline } from '@pmp/shared'
 import { ApiError, post } from '../api/http'
 import { serverNow } from '../realtime/socket'
+import { decideSync } from './syncPolicy'
 
 /** 一段极短的静音 WAV，用于在用户点击时解锁音频 */
 const SILENT =
   'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='
-
-const SEEK_THRESHOLD = 0.5
-const RATE_THRESHOLD = 0.04
 
 interface Loaded {
   itemId: string
@@ -25,7 +23,8 @@ type WakeLockSentinelLike = { release(): Promise<void>; released: boolean }
 
 /**
  * 按服务端时间轴播放：两个 audio 元素交替，一个播当前歌，一个预加载下一首。
- * 每秒计算漂移：>500ms 直接跳转；40–500ms 用 ±2% 速度追赶。
+ * 漂移小的时候用 ±6% 的速度追，缓冲中不硬跳，硬跳后有冷却，避免远程用户
+ * “跳一下—重新缓冲—再跳”的卡顿循环；只有切歌、拖进度这类大跳变才立即对齐。
  */
 export class AudioEngine {
   private readonly code: string
@@ -41,6 +40,14 @@ export class AudioEngine {
   private fetching = new Map<string, Promise<Loaded | null>>()
   private tickTimer: number
   private lastDriftCheck = 0
+  /** 当前音频元素是否在等数据 */
+  private buffering = false
+  /** 上一次硬跳的时刻（performance.now） */
+  private lastSeekAt = 0
+  /** 这段时间内不做对齐检查，让刚开始的播放/跳转稳定下来 */
+  private suppressUntil = 0
+  /** 上一次看到的播放位置，用来判断缓冲是否已经结束 */
+  private lastPosition = 0
   private wakeLock: WakeLockSentinelLike | null = null
   private volume = 0.8
   unlocked = false
@@ -58,7 +65,28 @@ export class AudioEngine {
     el.preload = 'auto'
     ;(el as any).preservesPitch = true
     el.addEventListener('error', () => this.onElError(idx))
+    el.addEventListener('waiting', () => this.setBuffering(idx, true))
+    el.addEventListener('stalled', () => this.setBuffering(idx, true))
+    el.addEventListener('canplay', () => this.setBuffering(idx, false))
+    el.addEventListener('playing', () => this.onPlaying(idx))
+    el.addEventListener('seeked', () => {
+      if (this.els[this.active] !== el) return
+      this.suppressUntil = performance.now() + 800
+    })
     return el
+  }
+
+  private setBuffering(idx: number, on: boolean): void {
+    // 事件可能来自预加载的备用元素，只关心正在出声的那个
+    if (this.els[this.active] !== this.els[idx]) return
+    this.buffering = on
+  }
+
+  private onPlaying(idx: number): void {
+    if (this.els[this.active] !== this.els[idx]) return
+    this.buffering = false
+    // 刚开始出声时给浏览器一点时间稳定，别立刻判定漂移
+    this.suppressUntil = performance.now() + 1200
   }
 
   /** 必须在用户点击的回调里调用 */
@@ -96,14 +124,19 @@ export class AudioEngine {
   }
 
   update(timeline: Timeline, upNextId: string | null): void {
-    const changedItem = this.timeline?.itemId !== timeline.itemId
+    const prev = this.timeline
+    const changedItem = prev?.itemId !== timeline.itemId
+    const changedState = prev?.state !== timeline.state
     this.timeline = timeline
     this.upNextId = upNextId
     if (changedItem) {
       this.retried.clear()
+      this.buffering = false
+      this.suppressUntil = 0
       if (timeline.itemId) this.failed.delete(timeline.itemId)
     }
-    this.sync(true)
+    // 只有换歌或播放/暂停切换才立刻重新对齐；普通快照（投票、成员变化）交给每秒的检查
+    this.sync(changedItem || changedState)
   }
 
   destroy(): void {
@@ -184,6 +217,7 @@ export class AudioEngine {
       if (this.loaded[other]?.itemId === itemId) {
         this.cur.pause()
         this.active = other
+        this.buffering = false
       } else if (!this.fetching.has(itemId)) {
         this.cur.pause()
         void this.load(this.active, itemId).then((ok) => ok && this.sync(true))
@@ -230,6 +264,8 @@ export class AudioEngine {
     if (el.paused) {
       this.seek(el, expectedMs / 1000)
       el.playbackRate = 1
+      this.lastSeekAt = performance.now()
+      this.suppressUntil = performance.now() + 1500
       el.play().catch(() => {
         /* 被浏览器拦截时，等待用户再点一次 */
       })
@@ -238,15 +274,23 @@ export class AudioEngine {
     const now2 = performance.now()
     if (!force && now2 - this.lastDriftCheck < 1000) return
     this.lastDriftCheck = now2
+    // 刚开始播放或刚跳转过，先让缓冲稳定，避免把启动延迟误判成漂移
+    if (now2 < this.suppressUntil) return
+    // stalled 之后没有 playing 事件时，只要进度在走就当作缓冲结束
+    if (this.buffering && el.currentTime > this.lastPosition + 0.05) this.buffering = false
+    this.lastPosition = el.currentTime
     const drift = el.currentTime - expectedMs / 1000 // 正数表示本机超前
-    const abs = Math.abs(drift)
-    if (abs > SEEK_THRESHOLD) {
+    const decision = decideSync(drift, {
+      sinceSeekMs: now2 - this.lastSeekAt,
+      buffering: this.buffering,
+    })
+    if (decision.seek) {
       this.seek(el, expectedMs / 1000)
+      this.lastSeekAt = now2
+      this.suppressUntil = now2 + 800
       el.playbackRate = 1
-    } else if (abs > RATE_THRESHOLD) {
-      el.playbackRate = drift > 0 ? 0.98 : 1.02
-    } else if (el.playbackRate !== 1) {
-      el.playbackRate = 1
+    } else if (el.playbackRate !== decision.rate) {
+      el.playbackRate = decision.rate
     }
   }
 
