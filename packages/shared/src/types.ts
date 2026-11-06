@@ -44,6 +44,14 @@ export interface PlaylistSummary {
   creator: string
 }
 
+export interface ArtistSummary {
+  id: string
+  name: string
+  avatarUrl: string
+  /** 别名或译名，可能为空 */
+  alias: string
+}
+
 export interface Timeline {
   itemId: string | null
   durationMs: number

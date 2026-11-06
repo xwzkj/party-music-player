@@ -62,6 +62,11 @@ function requireOpen(code: string): RoomRuntime {
   return room
 }
 
+/** 系统消息里用的成员昵称 */
+function memberName(room: RoomRuntime, userId: string): string {
+  return room.members.get(userId)?.nickname ?? '有人'
+}
+
 function requireMember(room: RoomRuntime, userId: string) {
   const m = room.members.get(userId)
   if (!m || m.left) throw new AppError('FORBIDDEN', 403)
@@ -352,9 +357,11 @@ export const roomService = {
     const now = Date.now()
     let item = findQueuedBySource(room, sourceId)
     let replacedFallback = false
+    let announce: 'new' | 'merge' | null = null
     tx(() => {
       if (item) {
         if (item.addedBy.includes(user.id)) return
+        announce = 'merge'
         item.addedBy.push(user.id)
         roomsRepo.addAdd(item.id, user.id, now)
         // 先投票再点这首歌，原来的投票作废
@@ -374,6 +381,7 @@ export const roomService = {
       roomsRepo.insertItem(newItem.id, room.id, newItem.track, now)
       roomsRepo.addAdd(newItem.id, user.id, now)
       item = newItem
+      announce = 'new'
       // 有人点歌了，撤掉自动锁定的兜底歌
       const up = room.upNextId ? room.queue.get(room.upNextId) : undefined
       if (up && isFallbackItem(up)) {
@@ -383,6 +391,14 @@ export const roomService = {
         replacedFallback = true
       }
     })
+    if (announce) {
+      const who = memberName(room, user.id)
+      const label = trackLabel(item!.track)
+      chatService.system(room, 'queueAdd', announce === 'new' ? `${who} 点了 ${label}` : `${who} 也点了 ${label}`, {
+        userId: user.id,
+        title: item!.track.title,
+      })
+    }
     if (replacedFallback) unlockUpNext(room)
     else ensureLocked(room)
     clearHalt(room)
@@ -410,6 +426,10 @@ export const roomService = {
         }
       }
     })
+    chatService.system(room, 'queueWithdraw', `${memberName(room, userId)} 撤回了 ${trackLabel(item.track)}`, {
+      userId,
+      title: item.track.title,
+    })
     if (unlocked) unlockUpNext(room)
     markChanged(room)
   },
@@ -419,12 +439,22 @@ export const roomService = {
     const item = room.queue.get(itemId)
     if (!item) throw new AppError('STALE_ITEM')
     if (item.addedBy.includes(userId)) throw new AppError('CANNOT_VOTE_OWN')
+    const prev = item.votes.get(userId) ?? 0
     if (vote === 0) {
       item.votes.delete(userId)
       roomsRepo.deleteVote(itemId, userId)
     } else {
       item.votes.set(userId, vote)
       roomsRepo.setVote(itemId, userId, vote)
+    }
+    // 只在赞/踩真正变化时发消息；取消投票不发，避免来回点刷屏
+    if (vote !== 0 && vote !== prev) {
+      chatService.system(
+        room,
+        'vote',
+        `${memberName(room, userId)} ${vote === 1 ? '赞了' : '踩了'} ${trackLabel(item.track)}`,
+        { userId, title: item.track.title, vote },
+      )
     }
     markChanged(room)
   },
@@ -447,6 +477,7 @@ export const roomService = {
         for (const uid of item.addedBy) {
           if (uid !== room.ownerId) bus.notice(room, [uid], 'info', `你点的《${item.track.title}》被房主移除`)
         }
+        chatService.system(room, 'queueRemove', `房主移除了 ${trackLabel(item.track)}`, { title: item.track.title })
         if (wasNext) unlockUpNext(room)
         break
       }

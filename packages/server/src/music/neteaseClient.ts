@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module'
-import type { AudioLevel, PlaylistSummary, RawLyrics, Track } from '@pmp/shared'
+import type { ArtistSummary, AudioLevel, PlaylistSummary, RawLyrics, Track } from '@pmp/shared'
 import { AppError } from '@pmp/shared'
 import { logger } from '../infra/logger.ts'
 import {
@@ -16,6 +16,7 @@ type Params = Record<string, unknown> & { cookie?: string }
 type ApiFn = (p: Params) => Promise<{ status: number; body: any; cookie?: string[] }>
 interface NcmApi {
   cloudsearch: ApiFn
+  artist_top_song: ApiFn
   song_detail: ApiFn
   song_url_v1: ApiFn
   lyric_new: ApiFn
@@ -110,6 +111,16 @@ function toPlaylist(p: any): PlaylistSummary {
   }
 }
 
+function toArtist(a: any): ArtistSummary {
+  const alias = [...(a.alias ?? []), ...(a.trans ? [a.trans] : [])].map(String).filter(Boolean)
+  return {
+    id: String(a.id),
+    name: String(a.name ?? ''),
+    avatarUrl: httpsUrl(a.img1v1Url ?? a.picUrl),
+    alias: [...new Set(alias)].join(' / '),
+  }
+}
+
 export class NeteaseClient implements MusicProvider {
   async searchTracks(keyword: string, page: number): Promise<Track[]> {
     const body = await call('cloudsearch', {
@@ -129,6 +140,21 @@ export class NeteaseClient implements MusicProvider {
       offset: (page - 1) * SEARCH_PAGE_SIZE,
     })
     return (body?.result?.playlists ?? []).map(toPlaylist)
+  }
+
+  async searchArtists(keyword: string, page: number): Promise<ArtistSummary[]> {
+    const body = await call('cloudsearch', {
+      keywords: keyword,
+      type: 100,
+      limit: SEARCH_PAGE_SIZE,
+      offset: (page - 1) * SEARCH_PAGE_SIZE,
+    })
+    return (body?.result?.artists ?? []).map(toArtist)
+  }
+
+  async getArtistTopTracks(id: string): Promise<Track[]> {
+    const body = await call('artist_top_song', { id })
+    return (body?.songs ?? []).map(toTrack)
   }
 
   async getTracks(ids: string[]): Promise<Track[]> {

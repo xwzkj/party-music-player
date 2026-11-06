@@ -87,7 +87,7 @@ export const joinRoomSchema = z.object({ passcode: z.string().min(1).max(16) })
 export const playUrlSchema = z.object({ itemId: idSchema })
 
 export const searchQuerySchema = z.object({
-  type: z.enum(['track', 'playlist']).default('track'),
+  type: z.enum(['track', 'playlist', 'artist']).default('track'),
   q: z.string().trim().min(1).max(100),
   page: z.coerce.number().int().min(1).max(50).default(1),
 })

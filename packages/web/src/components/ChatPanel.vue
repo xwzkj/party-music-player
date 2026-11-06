@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { nextTick, onActivated, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onMounted, ref, watch } from 'vue'
+import type { ChatMessage } from '@pmp/shared'
 import { useRoom } from '../stores/room'
 import { toastError, val } from '../ui'
 
@@ -72,6 +73,31 @@ async function older(): Promise<void> {
   }
 }
 
+type Entry = { kind: 'user'; msg: ChatMessage } | { kind: 'system'; key: string; msgs: ChatMessage[] }
+
+/** 连续的系统消息合成一组，只显示最后一条，点开可看全部 */
+const entries = computed<Entry[]>(() => {
+  const out: Entry[] = []
+  for (const m of room.chats) {
+    const last = out[out.length - 1]
+    if (m.kind === 'system') {
+      if (last?.kind === 'system') last.msgs.push(m)
+      // 用组内第一条的 id 作 key：新系统消息追加进来时，展开状态不会丢
+      else out.push({ kind: 'system', key: m.id, msgs: [m] })
+    } else {
+      out.push({ kind: 'user', msg: m })
+    }
+  }
+  return out
+})
+const expanded = ref(new Set<string>())
+function toggleGroup(key: string): void {
+  const next = new Set(expanded.value)
+  if (next.has(key)) next.delete(key)
+  else next.add(key)
+  expanded.value = next
+}
+
 const time = (t: number) => new Date(t).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 </script>
 
@@ -81,14 +107,34 @@ const time = (t: number) => new Date(t).toLocaleTimeString('zh-CN', { hour: '2-d
       <div class="center" v-if="room.chats.length >= 50 && hasMore">
         <mdui-button variant="text" @click="older">更早的消息</mdui-button>
       </div>
-      <template v-for="m in room.chats" :key="m.id">
-        <div v-if="m.kind === 'system'" class="sys">{{ m.content }}</div>
-        <div v-else class="msg" :class="{ mine: m.userId === room.snap?.me.userId }">
+      <template v-for="e in entries" :key="e.kind === 'user' ? e.msg.id : e.key">
+        <template v-if="e.kind === 'system'">
+          <template v-if="e.msgs.length > 1 && expanded.has(e.key)">
+            <div v-for="m in e.msgs" :key="m.id" class="sys">{{ m.content }}</div>
+            <button type="button" class="sys more" @click="toggleGroup(e.key)">收起</button>
+          </template>
+          <button
+            v-else-if="e.msgs.length > 1"
+            type="button"
+            class="sys group"
+            :title="`展开 ${e.msgs.length} 条系统消息`"
+            @click="toggleGroup(e.key)"
+          >
+            {{ e.msgs[e.msgs.length - 1].content }}<span class="more"> 等{{ e.msgs.length }}条</span>
+          </button>
+          <div v-else class="sys">{{ e.msgs[0].content }}</div>
+        </template>
+        <div v-else class="msg" :class="{ mine: e.msg.userId === room.snap?.me.userId }">
           <div class="who muted">
-            {{ m.nickname }} · {{ time(m.createdAt) }}
-            <a v-if="room.isHost" href="#" class="del" @click.prevent="room.act('host:chatDelete', { messageId: m.id })">删除</a>
+            {{ e.msg.nickname }} · {{ time(e.msg.createdAt) }}
+            <a
+              v-if="room.isHost"
+              href="#"
+              class="del"
+              @click.prevent="room.act('host:chatDelete', { messageId: e.msg.id })"
+            >删除</a>
           </div>
-          <div class="bubble">{{ m.content }}</div>
+          <div class="bubble">{{ e.msg.content }}</div>
         </div>
       </template>
       <div v-if="!room.chats.length" class="muted center" style="padding: 32px 0">还没有消息</div>
@@ -138,6 +184,22 @@ const time = (t: number) => new Date(t).toLocaleTimeString('zh-CN', { hour: '2-d
   opacity: 0.8;
   text-align: center;
   max-width: 85%;
+}
+button.sys {
+  border: 0;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+button.sys:hover {
+  background: rgba(var(--mdui-color-on-surface), 0.06);
+}
+/* "等N条"和"收起"用更浅的颜色 */
+.more {
+  opacity: 0.6;
 }
 .msg {
   max-width: 80%;

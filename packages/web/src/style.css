@@ -190,3 +190,11 @@ a {
 mdui-snackbar.app-toast {
   margin-bottom: calc(var(--app-toast-offset, 0px) + env(safe-area-inset-bottom));
 }
+
+/*
+ * mdui-switch 打开后，拇指的波纹层（2.5rem）会伸出开关右边缘几像素，
+ * 放在可滚动容器（如对话框）的最右侧时会撑出横向滚动条。右侧留出这点余量。
+ */
+mdui-switch {
+  margin-inline-end: 0.25rem;
+}

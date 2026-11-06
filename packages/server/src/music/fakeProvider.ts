@@ -1,4 +1,4 @@
-import { AppError, type AudioLevel, type PlaylistSummary, type RawLyrics, type Track } from '@pmp/shared'
+import { AppError, type ArtistSummary, type AudioLevel, type PlaylistSummary, type RawLyrics, type Track } from '@pmp/shared'
 import type { MusicProvider, NeteaseAccount, PlayUrlResult, QrCheckResult } from './provider.ts'
 
 /**
@@ -38,6 +38,15 @@ export class FakeProvider implements MusicProvider {
       trackCount: 20,
       creator: '测试用户',
     }))
+  }
+
+  async searchArtists(keyword: string, page: number): Promise<ArtistSummary[]> {
+    if (page > 1) return []
+    return Array.from({ length: 3 }, (_, i) => ({ id: String(700 + i), name: `${keyword}${i || ''}`, avatarUrl: '', alias: '' }))
+  }
+
+  async getArtistTopTracks(id: string): Promise<Track[]> {
+    return Array.from({ length: 10 }, (_, i) => fakeTrack(Number(id) * 100 + i))
   }
 
   async getTracks(ids: string[]): Promise<Track[]> {

@@ -21,6 +21,17 @@ export const usePrefs = defineStore('prefs', () => {
   const theme = ref<ThemeMode>(load('pmp.theme', 'auto'))
   const volume = ref<number>(load('pmp.volume', 0.8))
   const showTranslation = ref<boolean>(load('pmp.translation', true))
+  /** 最近搜索过的词，新的在前，最多 10 个 */
+  const recentSearches = ref<string[]>(load('pmp.recentSearches', []))
+
+  function addRecentSearch(q: string): void {
+    const v = q.trim()
+    if (!v) return
+    recentSearches.value = [v, ...recentSearches.value.filter((x) => x !== v)].slice(0, 10)
+  }
+  function clearRecentSearches(): void {
+    recentSearches.value = []
+  }
 
   watch(theme, (v) => {
     save('pmp.theme', v)
@@ -28,6 +39,7 @@ export const usePrefs = defineStore('prefs', () => {
   })
   watch(volume, (v) => save('pmp.volume', v))
   watch(showTranslation, (v) => save('pmp.translation', v))
+  watch(recentSearches, (v) => save('pmp.recentSearches', v))
 
   /** 每台设备自己选择的"本机出声"，按房间保存；null 表示用默认值 */
   function listeningChoice(code: string): boolean | null {
@@ -41,5 +53,15 @@ export const usePrefs = defineStore('prefs', () => {
     setTheme(theme.value)
   }
 
-  return { theme, volume, showTranslation, listeningChoice, setListeningChoice, applyTheme }
+  return {
+    theme,
+    volume,
+    showTranslation,
+    recentSearches,
+    addRecentSearch,
+    clearRecentSearches,
+    listeningChoice,
+    setListeningChoice,
+    applyTheme,
+  }
 })

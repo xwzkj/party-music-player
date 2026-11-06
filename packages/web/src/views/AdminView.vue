@@ -182,7 +182,7 @@ async function testEmail(): Promise<void> {
       <div class="row">
         <div class="spacer">
           <div>邮箱验证</div>
-          <div class="muted">{{ sys.smtpConfigured ? '开启后注册需要验证邮箱，并可自助找回密码' : '未配置 SMTP，不能开启（见下方 SMTP 配置）' }}</div>
+          <div class="muted">{{ sys.smtpConfigured ? '开启后注册需要验证邮箱，并可自助找回密码' : '需先在下方配置 SMTP' }}</div>
         </div>
         <mdui-switch
           :checked="sys.emailVerificationEnabled"
@@ -193,7 +193,7 @@ async function testEmail(): Promise<void> {
       <div class="row">
         <div class="spacer">
           <div>Turnstile 人机验证</div>
-          <div class="muted">{{ sys.turnstileConfigured ? '保护注册与找回密码' : '未配置站点密钥和私钥，不能开启（见下方 Turnstile 配置）' }}</div>
+          <div class="muted">{{ sys.turnstileConfigured ? '保护注册与找回密码' : '需先在下方配置 Turnstile' }}</div>
         </div>
         <mdui-switch
           :checked="sys.turnstileEnabled"
@@ -222,11 +222,10 @@ async function testEmail(): Promise<void> {
         <mdui-text-field variant="outlined" label="用户名" autocomplete="off" :value="smtp.user" @input="smtp.user = val($event)" />
         <mdui-text-field
           variant="outlined"
-          label="密码"
+          :label="smtpPassSet ? '密码（已设置，留空不修改）' : '密码'"
           type="password"
           toggle-password
           autocomplete="new-password"
-          :helper="smtpPassSet ? '已设置，留空表示不修改' : '未设置'"
           :value="smtp.pass"
           @input="smtp.pass = val($event)"
         />
@@ -256,11 +255,10 @@ async function testEmail(): Promise<void> {
       <mdui-text-field variant="outlined" label="站点密钥（Site Key）" :value="ts.siteKey" @input="ts.siteKey = val($event)" />
       <mdui-text-field
         variant="outlined"
-        label="私钥（Secret Key）"
+        :label="tsSecretSet ? '私钥（已设置，留空不修改）' : '私钥（Secret Key）'"
         type="password"
         toggle-password
         autocomplete="new-password"
-        :helper="tsSecretSet ? '已设置，留空表示不修改' : '未设置'"
         :value="ts.secretKey"
         @input="ts.secretKey = val($event)"
       />
@@ -289,25 +287,31 @@ async function testEmail(): Promise<void> {
     </div>
 
     <div class="title-medium">用户（{{ users.length }}）</div>
-    <mdui-list>
-      <mdui-list-item v-for="u in users" :key="u.id" nonclickable>
-        {{ u.nickname || '（未设置昵称）' }}
-        <span slot="description">
-          {{ u.username }} · {{ u.role === 'admin' ? '管理员' : '用户' }}
-          {{ u.email ? ` · ${u.email}` : '' }}{{ u.neteaseBound ? ' · 已绑定网易云' : '' }}
-        </span>
-        <div slot="end-icon" class="row">
+    <div class="users">
+      <div v-for="u in users" :key="u.id" class="user">
+        <div class="user-head">
+          <div class="user-name ellipsis">{{ u.nickname || '（未设置昵称）' }}</div>
+          <span class="tag" :class="{ admin: u.role === 'admin' }">{{ u.role === 'admin' ? '管理员' : '用户' }}</span>
+        </div>
+        <div class="muted user-meta">
+          <span>{{ u.username }}</span>
+          <span v-if="u.email" class="break">{{ u.email }}</span>
+          <span v-if="u.neteaseBound">已绑定网易云</span>
+        </div>
+        <div class="user-actions">
           <mdui-checkbox
             v-if="u.role !== 'admin'"
             :checked="u.canCreateRoom"
             @change="toggleCreate(u, checked($event))"
-            >可建房</mdui-checkbox
-          >
+          >可建房</mdui-checkbox>
+          <span class="spacer"></span>
           <mdui-button variant="text" @click="resetPassword(u)">重置密码</mdui-button>
-          <mdui-button-icon v-if="u.role !== 'admin'" @click="remove(u)"><mdui-icon-delete></mdui-icon-delete></mdui-button-icon>
+          <mdui-button-icon v-if="u.role !== 'admin'" title="删除用户" @click="remove(u)">
+            <mdui-icon-delete></mdui-icon-delete>
+          </mdui-button-icon>
         </div>
-      </mdui-list-item>
-    </mdui-list>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -319,6 +323,56 @@ async function testEmail(): Promise<void> {
 }
 .wide {
   grid-column: 1 / -1;
+}
+.users {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.user {
+  min-width: 0;
+  padding: 12px 12px 4px 16px;
+  border-radius: var(--mdui-shape-corner-large);
+  background: rgb(var(--mdui-color-surface-container-low));
+}
+.user-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.user-name {
+  flex: 1;
+  font-weight: 500;
+}
+.tag {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgb(var(--mdui-color-surface-container-highest));
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+.tag.admin {
+  background: rgb(var(--mdui-color-primary-container));
+  color: rgb(var(--mdui-color-on-primary-container));
+}
+.user-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin-top: 2px;
+}
+/* 长邮箱在窄屏上换行而不是撑开卡片 */
+.break {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.user-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  margin-left: -8px;
 }
 @media (min-width: 640px) {
   .grid {

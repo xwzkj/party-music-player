@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { LRUCache } from 'lru-cache'
-import type { AudioLevel, Playability, PlaylistSummary, RawLyrics, Track } from '@pmp/shared'
+import type { ArtistSummary, AudioLevel, Playability, PlaylistSummary, RawLyrics, Track } from '@pmp/shared'
 import { config } from '../config.ts'
 import { FakeProvider } from './fakeProvider.ts'
 import { NeteaseClient } from './neteaseClient.ts'
@@ -21,7 +21,7 @@ export function setMusicProvider(p: MusicProvider): void {
   playabilityCache.clear()
 }
 
-const searchCache = new LRUCache<string, Track[] | PlaylistSummary[]>({ max: 500, ttl: 5 * MIN })
+const searchCache = new LRUCache<string, Track[] | PlaylistSummary[] | ArtistSummary[]>({ max: 500, ttl: 5 * MIN })
 const trackCache = new LRUCache<string, Track>({ max: 5000, ttl: 60 * MIN })
 const lyricCache = new LRUCache<string, RawLyrics>({ max: 1000, ttl: 24 * 60 * MIN })
 const playabilityCache = new LRUCache<string, Playability>({ max: 5000, ttl: config.playabilityCacheMs })
@@ -44,6 +44,25 @@ export const music = {
     const hit = searchCache.get(key) as PlaylistSummary[] | undefined
     if (hit) return hit
     const r = await provider.searchPlaylists(q, page)
+    searchCache.set(key, r)
+    return r
+  },
+
+  async searchArtists(q: string, page: number): Promise<ArtistSummary[]> {
+    const key = `a:${q}:${page}`
+    const hit = searchCache.get(key) as ArtistSummary[] | undefined
+    if (hit) return hit
+    const r = await provider.searchArtists(q, page)
+    searchCache.set(key, r)
+    return r
+  },
+
+  async getArtistTopTracks(id: string): Promise<Track[]> {
+    const key = `at:${id}`
+    const hit = searchCache.get(key) as Track[] | undefined
+    if (hit) return hit
+    const r = await provider.getArtistTopTracks(id)
+    for (const t of r) trackCache.set(t.sourceId, t)
     searchCache.set(key, r)
     return r
   },

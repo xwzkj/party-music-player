@@ -1,4 +1,4 @@
-import type { AudioLevel, PlaylistSummary, QrStatus, RawLyrics, Track } from '@pmp/shared'
+import type { ArtistSummary, AudioLevel, PlaylistSummary, QrStatus, RawLyrics, Track } from '@pmp/shared'
 
 export interface PlayUrlResult {
   url: string | null
@@ -20,6 +20,9 @@ export interface QrCheckResult {
 export interface MusicProvider {
   searchTracks(keyword: string, page: number): Promise<Track[]>
   searchPlaylists(keyword: string, page: number): Promise<PlaylistSummary[]>
+  searchArtists(keyword: string, page: number): Promise<ArtistSummary[]>
+  /** 歌手热门歌曲（网易云最多返回 50 首） */
+  getArtistTopTracks(id: string): Promise<Track[]>
   getTracks(ids: string[]): Promise<Track[]>
   getPlayUrl(id: string, level: AudioLevel, cookie?: string): Promise<PlayUrlResult>
   getLyrics(id: string): Promise<RawLyrics>

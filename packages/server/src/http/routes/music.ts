@@ -17,7 +17,9 @@ export async function musicRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/music/search', async (req) => {
     const q = parse(searchQuerySchema, req.query)
     if (!searchPerUser.take(req.me.id)) throw new AppError('RATE_LIMITED', 429)
-    return q.type === 'track' ? music.searchTracks(q.q, q.page) : music.searchPlaylists(q.q, q.page)
+    if (q.type === 'track') return music.searchTracks(q.q, q.page)
+    if (q.type === 'artist') return music.searchArtists(q.q, q.page)
+    return music.searchPlaylists(q.q, q.page)
   })
 
   app.post('/api/music/playlist/resolve', async (req) => {
@@ -31,6 +33,11 @@ export async function musicRoutes(app: FastifyInstance): Promise<void> {
     const { id } = parse(z.object({ id: z.string().regex(/^\d{1,20}$/) }), req.params)
     const q = parse(z.object({ page: z.coerce.number().int().min(1).max(100).default(1) }), req.query)
     return music.getPlaylistTracks(id, q.page, neteaseService.cookieOf(req.me.id))
+  })
+
+  app.get('/api/music/artists/:id/tracks', async (req) => {
+    const { id } = parse(z.object({ id: z.string().regex(/^\d{1,20}$/) }), req.params)
+    return music.getArtistTopTracks(id)
   })
 
   app.get('/api/music/lyrics/:id', async (req) => {
