@@ -180,6 +180,8 @@ export class NeteaseClient implements MusicProvider {
       lrc: body?.lrc?.lyric ?? null,
       yrc: body?.yrc?.lyric ?? null,
       tlyric: body?.tlyric?.lyric ?? null,
+      // ytlrc 和 yrc 的时间戳同源，有逐字歌词时优先用它做翻译
+      ytlrc: body?.ytlrc?.lyric ?? null,
     }
   }
 

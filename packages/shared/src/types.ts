@@ -183,6 +183,8 @@ export interface RawLyrics {
   lrc: string | null
   yrc: string | null
   tlyric: string | null
+  /** 与 yrc 同源的逐行翻译（LRC 格式），时间戳和 yrc 对得上 */
+  ytlrc?: string | null
 }
 
 export type QrStatus =
