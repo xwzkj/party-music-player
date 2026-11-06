@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { inject, nextTick, ref, watch, type Ref } from 'vue'
 import type { ArtistSummary, PlaylistSummary, Track } from '@pmp/shared'
 import { get } from '../api/http'
 import { usePrefs } from '../stores/prefs'
@@ -25,6 +25,12 @@ const searched = ref(false)
 const done = ref(false)
 const openPlaylist = ref<PlaylistSummary | null>(null)
 const openArtist = ref<ArtistSummary | null>(null)
+/** 房间页提供的滚动容器：进/出详情时回到顶部，避免停在旧列表的滚动位置 */
+const contentEl = inject<Ref<HTMLElement | null>>('roomContentEl', ref(null))
+watch([openArtist, openPlaylist], async () => {
+  await nextTick()
+  if (contentEl.value) contentEl.value.scrollTop = 0
+})
 /** 每次新搜索递增，丢掉过期请求的结果 */
 let seq = 0
 

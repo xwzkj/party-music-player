@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ChatPanel from '../components/ChatPanel.vue'
 import ChatSheet from '../components/ChatSheet.vue'
@@ -35,6 +35,9 @@ let lastToastAt = 0
 
 const s = computed(() => room.snap)
 const panes = { search: SearchPanel, playlists: PlaylistsPanel, chat: ChatPanel }
+/** 标签页内容的滚动容器，子面板切详情/返回时复位滚动位置 */
+const contentEl = ref<HTMLElement | null>(null)
+provide('roomContentEl', contentEl)
 
 // 底部栏（播放条 + 导航栏）的高度写成 CSS 变量，toast 据此抬高，避免盖住底部导航
 const bottomItem = ref<HTMLElement | null>(null)
@@ -92,6 +95,12 @@ function setTab(e: Event): void {
   const v = val(e)
   if (v === 'search' || v === 'playlists' || v === 'chat') tab.value = v
 }
+
+// 切标签页时回到顶部，避免沿用上一个页面的滚动位置
+watch(tab, async () => {
+  await nextTick()
+  if (contentEl.value) contentEl.value.scrollTop = 0
+})
 
 // 不在聊天页时，别人发的新消息用 toast + 未读徽标提醒
 watch(
@@ -233,7 +242,7 @@ function goAdmin(): void {
       <div v-if="room.needsUnlock" class="banner action" @click="room.setListening(true)">
         点这里开始在本机播放
       </div>
-      <div class="content" :class="{ chat: tab === 'chat' }">
+      <div ref="contentEl" class="content" :class="{ chat: tab === 'chat' }">
         <Transition name="fade-through" mode="out-in">
           <KeepAlive>
             <component :is="panes[tab]" :key="tab" />
@@ -287,6 +296,9 @@ function goAdmin(): void {
 .main {
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  /* 只让 .content 滚动；mdui-layout-main 默认 overflow:auto，两层滚动会把位置留在旧内容上 */
+  overflow: hidden;
 }
 .content {
   max-width: 720px;
@@ -295,7 +307,9 @@ function goAdmin(): void {
   padding: 12px 16px;
   box-sizing: border-box;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .content.chat {
   display: flex;

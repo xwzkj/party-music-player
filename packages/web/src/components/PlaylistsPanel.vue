@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { inject, nextTick, onMounted, ref, watch, type Ref } from 'vue'
 import type { PlaylistSummary } from '@pmp/shared'
 import { get, post } from '../api/http'
 import { useRoom } from '../stores/room'
@@ -12,6 +12,12 @@ const playlists = ref<PlaylistSummary[]>([])
 const loading = ref(false)
 const link = ref('')
 const openPlaylist = ref<Pick<PlaylistSummary, 'id' | 'name'> | null>(null)
+/** 房间页提供的滚动容器：进/出歌单详情时回到顶部 */
+const contentEl = inject<Ref<HTMLElement | null>>('roomContentEl', ref(null))
+watch(openPlaylist, async () => {
+  await nextTick()
+  if (contentEl.value) contentEl.value.scrollTop = 0
+})
 
 async function load(): Promise<void> {
   if (!room.snap?.me.neteaseBound) {
