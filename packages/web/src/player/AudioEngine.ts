@@ -7,6 +7,19 @@ import { decideSync } from './syncPolicy'
 const SILENT =
   'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='
 
+/** 浏览器是否支持“变速不变调”；不支持就不调速，避免变调 */
+const PRESERVES_PITCH =
+  'preservesPitch' in HTMLMediaElement.prototype ||
+  'mozPreservesPitch' in HTMLMediaElement.prototype ||
+  'webkitPreservesPitch' in HTMLMediaElement.prototype
+
+/** 有的内核在换 src 后会重置这个标记，加载前后都重新设一次 */
+function keepPitch(el: HTMLAudioElement): void {
+  el.preservesPitch = true
+  ;(el as any).mozPreservesPitch = true
+  ;(el as any).webkitPreservesPitch = true
+}
+
 interface Loaded {
   itemId: string
   url: string
@@ -23,8 +36,8 @@ type WakeLockSentinelLike = { release(): Promise<void>; released: boolean }
 
 /**
  * 按服务端时间轴播放：两个 audio 元素交替，一个播当前歌，一个预加载下一首。
- * 漂移小的时候用 ±6% 的速度追，缓冲中不硬跳，硬跳后有冷却，避免远程用户
- * “跳一下—重新缓冲—再跳”的卡顿循环；只有切歌、拖进度这类大跳变才立即对齐。
+ * 偏差小时用 ±3% 的速度慢慢追（preservesPitch 保证不变调），缓冲中不硬跳，
+ * 硬跳后有冷却；不支持变调保护的浏览器完全不调速。
  */
 export class AudioEngine {
   private readonly code: string
@@ -63,7 +76,7 @@ export class AudioEngine {
   private makeEl(idx: number): HTMLAudioElement {
     const el = new Audio()
     el.preload = 'auto'
-    ;(el as any).preservesPitch = true
+    keepPitch(el)
     el.addEventListener('error', () => this.onElError(idx))
     el.addEventListener('waiting', () => this.setBuffering(idx, true))
     el.addEventListener('stalled', () => this.setBuffering(idx, true))
@@ -195,6 +208,7 @@ export class AudioEngine {
     this.loaded[slot] = l
     const el = this.els[slot]
     el.src = l.url
+    keepPitch(el)
     el.volume = this.volume
     el.load()
     return true
@@ -283,6 +297,7 @@ export class AudioEngine {
     const decision = decideSync(drift, {
       sinceSeekMs: now2 - this.lastSeekAt,
       buffering: this.buffering,
+      pitchPreserved: PRESERVES_PITCH,
     })
     if (decision.seek) {
       this.seek(el, expectedMs / 1000)
