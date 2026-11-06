@@ -161,16 +161,16 @@ function onLyricsClick(): void {
           <span>{{ fmtTime(duration) }}</span>
         </div>
         <div class="transport">
-          <mdui-button-icon title="播放列表" @click="emit('openQueue')">
-            <mdui-icon-queue-music></mdui-icon-queue-music>
-          </mdui-button-icon>
-          <PlaybackButtons />
           <span class="chat-wrap">
             <mdui-button-icon :title="unread ? `聊天（${unread} 条新消息）` : '聊天'" @click="emit('openChat')">
               <mdui-icon-chat></mdui-icon-chat>
             </mdui-button-icon>
             <mdui-badge v-if="unread" class="chat-badge">{{ unread > 99 ? '99+' : unread }}</mdui-badge>
           </span>
+          <PlaybackButtons />
+          <mdui-button-icon title="播放列表" @click="emit('openQueue')">
+            <mdui-icon-queue-music></mdui-icon-queue-music>
+          </mdui-button-icon>
         </div>
       </div>
     </div>
