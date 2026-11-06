@@ -15,9 +15,30 @@ const box = ref<HTMLDivElement | null>(null)
 let raf = 0
 let resizeObserver: ResizeObserver | null = null
 let cancelScroll: (() => void) | null = null
-/** 用户手动滚动（滚轮、触摸）后，暂停自动跟随 3 秒 */
-let userScrollUntil = 0
+/** 是否自动跟随当前行；用户手动滚动后停下，点“回到当前”才恢复 */
+const following = ref(true)
+/** 程序触发 scrollTop 后的一小段时间内，忽略由此产生的 scroll 事件 */
+let programmaticUntil = 0
 let words: { el: HTMLElement; startMs: number; durationMs: number }[] = []
+
+function markProgrammatic(): void {
+  programmaticUntil = performance.now() + 200
+}
+
+function pauseFollow(): void {
+  following.value = false
+  cancelScroll?.()
+}
+
+function resumeFollow(): void {
+  following.value = true
+  scrollToCurrent(true)
+}
+
+function onScroll(): void {
+  if (performance.now() < programmaticUntil) return
+  pauseFollow()
+}
 
 async function load(id: string): Promise<void> {
   loading.value = true
@@ -34,6 +55,8 @@ async function load(id: string): Promise<void> {
   await nextTick()
   index.value = findLyricIndex(lines.value, room.positionMs())
   await nextTick()
+  // 换歌后重新跟随当前行
+  following.value = true
   scrollToCurrent(false)
   collectWords()
 }
@@ -62,27 +85,28 @@ function collectWords(): void {
   words = line?.words && els ? line.words.map((w, j) => ({ el: els[j], startMs: w.startMs, durationMs: w.durationMs })) : []
 }
 
-/** 把当前行滚到中间；动画用 MD3 emphasized 曲线 */
+/** 把当前行滚到中间；动画用 MD3 emphasized 曲线。用户手动滚动后不再自动跟随 */
 function scrollToCurrent(animate: boolean): void {
   const b = box.value
   const el = b?.querySelector<HTMLElement>(`[data-i="${index.value}"]`)
-  if (!b || !el || performance.now() < userScrollUntil) return
+  if (!b || !el || !following.value) return
   // 容器是 offsetParent（见样式里的 position: relative），offsetTop 不受外层缩放动画影响
   const target = el.offsetTop - b.clientHeight / 2 + el.offsetHeight / 2
   cancelScroll?.()
   if (!animate) {
+    markProgrammatic()
     b.scrollTop = target
     return
   }
   const from = b.scrollTop
-  cancelScroll = tween(500, easing.emphasized, (p) => {
+  const stop = tween(500, easing.emphasized, (p) => {
+    markProgrammatic()
     b.scrollTop = from + (target - from) * p
   })
-}
-
-function onUserTouch(): void {
-  cancelScroll?.()
-  userScrollUntil = performance.now() + 3000
+  cancelScroll = () => {
+    stop()
+    cancelScroll = null
+  }
 }
 
 watch(
@@ -123,22 +147,40 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="box" class="lyrics" @wheel.passive="onUserTouch" @touchstart.passive="onUserTouch">
-    <div class="spacer-pad" aria-hidden="true"></div>
-    <div v-if="loading" class="muted center">歌词加载中…</div>
-    <div v-else-if="!lines.length" class="muted center">暂无歌词</div>
-    <div v-for="(l, i) in lines" :key="i" :data-i="i" class="line" :class="{ current: i === index }">
-      <div v-if="i === index && l.words" class="text">
-        <span v-for="(w, j) in l.words" :key="j" class="word">{{ w.text }}</span>
+  <div class="wrap">
+    <div
+      ref="box"
+      class="lyrics"
+      @scroll.passive="onScroll"
+      @wheel.passive="pauseFollow"
+      @touchstart.passive="pauseFollow"
+    >
+      <div class="spacer-pad" aria-hidden="true"></div>
+      <div v-if="loading" class="muted center">歌词加载中…</div>
+      <div v-else-if="!lines.length" class="muted center">暂无歌词</div>
+      <div v-for="(l, i) in lines" :key="i" :data-i="i" class="line" :class="{ current: i === index }">
+        <div v-if="i === index && l.words" class="text">
+          <span v-for="(w, j) in l.words" :key="j" class="word">{{ w.text }}</span>
+        </div>
+        <div v-else class="text">{{ l.text }}</div>
+        <div v-if="showTranslation && l.translation" class="tr">{{ l.translation }}</div>
       </div>
-      <div v-else class="text">{{ l.text }}</div>
-      <div v-if="showTranslation && l.translation" class="tr">{{ l.translation }}</div>
+      <div class="spacer-pad" aria-hidden="true"></div>
     </div>
-    <div class="spacer-pad" aria-hidden="true"></div>
+    <mdui-button v-if="!following" class="follow" variant="filled" @click="resumeFollow">
+      <mdui-icon-my-location slot="icon"></mdui-icon-my-location>
+      回到当前
+    </mdui-button>
   </div>
 </template>
 
 <style scoped>
+.wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
 .lyrics {
   overflow-y: auto;
   overflow-x: hidden;
@@ -152,6 +194,13 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   text-align: center;
   mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent);
+}
+.follow {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 2;
 }
 .spacer-pad {
   height: var(--pad, 40%);

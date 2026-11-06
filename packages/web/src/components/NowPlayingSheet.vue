@@ -92,7 +92,7 @@ function togglePage(): void {
             <img v-if="track.coverUrl" class="cover art" :src="coverSrc(track.coverUrl, 600)" alt="" />
             <div v-else class="cover art placeholder"><mdui-icon-music-note></mdui-icon-music-note></div>
           </div>
-          <div v-else key="lyrics" class="lyrics" @click="page = 'song'">
+          <div v-else key="lyrics" class="lyrics">
             <LyricsView :source-id="track.sourceId" :duration-ms="track.durationMs" :show-translation="prefs.showTranslation" />
           </div>
         </Transition>
@@ -202,7 +202,6 @@ function togglePage(): void {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  cursor: pointer;
 }
 .meta {
   display: flex;
