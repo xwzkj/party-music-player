@@ -59,6 +59,32 @@ async function onSeekChange(e: Event): Promise<void> {
 function togglePage(): void {
   page.value = page.value === 'song' ? 'lyrics' : 'song'
 }
+
+// 点歌词回封面，但要和“拖动歌词滚动”区分开：移动超过 8px 就不算点击
+let downX = 0
+let downY = 0
+let downAt = 0
+let moved = false
+
+function onLyricsPointerDown(e: PointerEvent): void {
+  if (e.button !== 0) return
+  downX = e.clientX
+  downY = e.clientY
+  downAt = performance.now()
+  moved = false
+}
+
+function onLyricsPointerMove(e: PointerEvent): void {
+  if (Math.abs(e.clientX - downX) > 8 || Math.abs(e.clientY - downY) > 8) moved = true
+}
+
+function onLyricsClick(): void {
+  if (moved || performance.now() - downAt > 500) {
+    moved = false
+    return
+  }
+  page.value = 'song'
+}
 </script>
 
 <template>
@@ -92,7 +118,14 @@ function togglePage(): void {
             <img v-if="track.coverUrl" class="cover art" :src="coverSrc(track.coverUrl, 600)" alt="" />
             <div v-else class="cover art placeholder"><mdui-icon-music-note></mdui-icon-music-note></div>
           </div>
-          <div v-else key="lyrics" class="lyrics">
+          <div
+            v-else
+            key="lyrics"
+            class="lyrics"
+            @pointerdown="onLyricsPointerDown"
+            @pointermove="onLyricsPointerMove"
+            @click="onLyricsClick"
+          >
             <LyricsView :source-id="track.sourceId" :duration-ms="track.durationMs" :show-translation="prefs.showTranslation" />
           </div>
         </Transition>
@@ -202,6 +235,7 @@ function togglePage(): void {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  cursor: pointer;
 }
 .meta {
   display: flex;

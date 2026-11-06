@@ -15,8 +15,8 @@ const box = ref<HTMLDivElement | null>(null)
 let raf = 0
 let resizeObserver: ResizeObserver | null = null
 let cancelScroll: (() => void) | null = null
-/** 是否自动跟随当前行；用户手动滚动后停下，点“回到当前”才恢复 */
-const following = ref(true)
+/** 用户手动滚动后暂停自动跟随的时间点；滚动期间不断顺延 */
+let pauseUntil = 0
 /** 程序触发 scrollTop 后的一小段时间内，忽略由此产生的 scroll 事件 */
 let programmaticUntil = 0
 let words: { el: HTMLElement; startMs: number; durationMs: number }[] = []
@@ -25,19 +25,16 @@ function markProgrammatic(): void {
   programmaticUntil = performance.now() + 200
 }
 
+/** 用户开始滚动：停掉动画，并暂时不要跟随 */
 function pauseFollow(): void {
-  following.value = false
   cancelScroll?.()
-}
-
-function resumeFollow(): void {
-  following.value = true
-  scrollToCurrent(true)
+  pauseUntil = performance.now() + 6000
 }
 
 function onScroll(): void {
   if (performance.now() < programmaticUntil) return
-  pauseFollow()
+  pauseUntil = performance.now() + 6000
+  cancelScroll?.()
 }
 
 async function load(id: string): Promise<void> {
@@ -55,8 +52,8 @@ async function load(id: string): Promise<void> {
   await nextTick()
   index.value = findLyricIndex(lines.value, room.positionMs())
   await nextTick()
-  // 换歌后重新跟随当前行
-  following.value = true
+  // 换歌后回到跟随状态
+  pauseUntil = 0
   scrollToCurrent(false)
   collectWords()
 }
@@ -89,7 +86,7 @@ function collectWords(): void {
 function scrollToCurrent(animate: boolean): void {
   const b = box.value
   const el = b?.querySelector<HTMLElement>(`[data-i="${index.value}"]`)
-  if (!b || !el || !following.value) return
+  if (!b || !el || performance.now() < pauseUntil) return
   // 容器是 offsetParent（见样式里的 position: relative），offsetTop 不受外层缩放动画影响
   const target = el.offsetTop - b.clientHeight / 2 + el.offsetHeight / 2
   cancelScroll?.()
@@ -167,10 +164,6 @@ onBeforeUnmount(() => {
       </div>
       <div class="spacer-pad" aria-hidden="true"></div>
     </div>
-    <mdui-button v-if="!following" class="follow" variant="filled" @click="resumeFollow">
-      <mdui-icon-my-location slot="icon"></mdui-icon-my-location>
-      回到当前
-    </mdui-button>
   </div>
 </template>
 
@@ -180,27 +173,24 @@ onBeforeUnmount(() => {
   display: flex;
   flex: 1;
   min-height: 0;
+  /* 遮罩放在外层：部分浏览器（尤其 iOS Safari）给滚动容器加 mask 会吃掉滚动 */
+  mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent);
+  -webkit-mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent);
 }
 .lyrics {
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
   position: relative;
-  /* 在 flex 容器里撑满；单独使用时退回 100% */
   flex: 1;
-  height: 100%;
   min-height: 0;
   padding: 0 8px;
   box-sizing: border-box;
   text-align: center;
-  mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent);
-}
-.follow {
-  position: absolute;
-  left: 50%;
-  bottom: 16px;
-  transform: translateX(-50%);
-  z-index: 2;
+  /* 明确允许纵向手势，避免被外层手势或合成层吞掉 */
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .spacer-pad {
   height: var(--pad, 40%);
