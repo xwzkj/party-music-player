@@ -43,22 +43,29 @@ export async function copyText(text: string): Promise<boolean> {
       /* 权限被拒时继续走老办法 */
     }
   }
+  // mdui 的对话框会把焦点锁在自己里面：textarea 放在 body 上时一 select 就被抢走焦点，
+  // 选区丢失，execCommand 什么都没复制却照样返回 true。所以放进当前焦点所在的对话框里。
+  const host = (document.activeElement?.closest('mdui-dialog') as HTMLElement | null) ?? document.body
+  const prevFocus = document.activeElement as HTMLElement | null
   const area = document.createElement('textarea')
   area.value = text
   area.setAttribute('readonly', '')
-  area.style.position = 'fixed'
-  area.style.top = '-1000px'
-  area.style.opacity = '0'
-  document.body.appendChild(area)
+  // 不能用 display:none 或 visibility:hidden，那样无法选中
+  area.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:0;opacity:0;font-size:16px'
+  host.appendChild(area)
+  area.focus({ preventScroll: true })
   area.select()
   area.setSelectionRange(0, text.length)
   let ok = false
   try {
-    ok = document.execCommand('copy')
+    // 焦点或选区不对时，即使 execCommand 返回 true 也没有复制到东西
+    const selected = document.activeElement === area && area.selectionEnd - area.selectionStart === text.length
+    ok = document.execCommand('copy') && selected
   } catch {
     ok = false
   }
   area.remove()
+  prevFocus?.focus?.({ preventScroll: true })
   return ok
 }
 

@@ -6,7 +6,8 @@ import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
  * 动效按 MD3：进入从底部上滑，emphasized-decelerate 500ms；退出下滑，emphasized-accelerate 200ms。
  * 顶部拖动条可以下拉关闭。
  */
-const props = defineProps<{ open: boolean; label: string }>()
+/** tone="player" 时用带主题色的渐变背景，和其他页面区分开 */
+const props = defineProps<{ open: boolean; label: string; tone?: 'player' }>()
 const emit = defineEmits<{ close: [] }>()
 
 const sheet = ref<HTMLElement | null>(null)
@@ -92,7 +93,7 @@ function afterLeave(): void {
         v-if="open"
         ref="sheet"
         class="sheet"
-        :class="{ settling, dragging }"
+        :class="{ settling, dragging, player: tone === 'player' }"
         role="dialog"
         aria-modal="true"
         :aria-label="label"
@@ -128,6 +129,13 @@ function afterLeave(): void {
   color: rgb(var(--mdui-color-on-surface));
   outline: none;
   will-change: transform;
+}
+/*
+ * 播放页用高一档的表面容器色（纯色，MD3 的色调层级），和其他页面的 surface 背景区分开。
+ * 深浅模式由令牌自己切换，不用单独写。
+ */
+.sheet.player {
+  background: rgb(var(--mdui-color-surface-container-high));
 }
 .grab {
   flex-shrink: 0;

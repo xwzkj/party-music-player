@@ -93,7 +93,11 @@ watch(
   () => props.showTranslation,
   () => void nextTick(() => scrollToCurrent(true)),
 )
-/** 上下留白取容器高度的一半，任何一行（包括第一行和最后一行）都能滚到正中 */
+/**
+ * 上下留白取容器高度的一半，任何一行（包括第一行和最后一行）都能滚到正中。
+ * 留白放在滚动内容里的占位元素上，不能用容器的 padding：padding 会计入容器的最小高度，
+ * 而它又取自容器高度，页面变矮后容器就缩不回去，歌词溢出到下面的内容上。
+ */
 function syncPadding(): void {
   const b = box.value
   if (b) b.style.setProperty('--pad', `${Math.round(b.clientHeight / 2)}px`)
@@ -120,6 +124,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="box" class="lyrics" @wheel.passive="onUserTouch" @touchstart.passive="onUserTouch">
+    <div class="spacer-pad" aria-hidden="true"></div>
     <div v-if="loading" class="muted center">歌词加载中…</div>
     <div v-else-if="!lines.length" class="muted center">暂无歌词</div>
     <div v-for="(l, i) in lines" :key="i" :data-i="i" class="line" :class="{ current: i === index }">
@@ -129,6 +134,7 @@ onBeforeUnmount(() => {
       <div v-else class="text">{{ l.text }}</div>
       <div v-if="showTranslation && l.translation" class="tr">{{ l.translation }}</div>
     </div>
+    <div class="spacer-pad" aria-hidden="true"></div>
   </div>
 </template>
 
@@ -138,11 +144,17 @@ onBeforeUnmount(() => {
   overflow-x: hidden;
   scrollbar-width: none;
   position: relative;
+  /* 在 flex 容器里撑满；单独使用时退回 100% */
+  flex: 1;
   height: 100%;
-  padding: var(--pad, 40%) 8px;
+  min-height: 0;
+  padding: 0 8px;
   box-sizing: border-box;
   text-align: center;
   mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent);
+}
+.spacer-pad {
+  height: var(--pad, 40%);
 }
 .line {
   padding: 10px 0;

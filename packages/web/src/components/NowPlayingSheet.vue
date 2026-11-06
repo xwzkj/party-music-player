@@ -62,7 +62,7 @@ function togglePage(): void {
 </script>
 
 <template>
-  <FullscreenSheet :open="open" label="正在播放" @close="emit('close')">
+  <FullscreenSheet :open="open" label="正在播放" tone="player" @close="emit('close')">
     <template #header>
       <div class="row header">
         <mdui-button-icon title="收起" @click="emit('close')">
@@ -167,6 +167,7 @@ function togglePage(): void {
   flex: 1;
   min-height: 0;
   display: flex;
+  overflow: hidden;
 }
 .song {
   flex: 1;
@@ -195,6 +196,12 @@ function togglePage(): void {
 .lyrics {
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  /* 用 flex 把歌词滚动框撑满，而不是靠子元素的 height: 100%：
+     百分比高度在 flex 子项里不可靠，页面变矮后滚动框会停在旧高度并溢出 */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   cursor: pointer;
 }
 .meta {
@@ -228,5 +235,19 @@ function togglePage(): void {
 }
 .empty {
   padding: 64px 0;
+}
+/* 页面很矮时（横屏手机、弹出键盘）压缩信息区，把空间留给封面和歌词 */
+@media (max-height: 520px) {
+  .np {
+    gap: 8px;
+    padding-bottom: 12px;
+  }
+  .meta .muted:nth-child(3) {
+    display: none;
+  }
+  .meta .headline-small {
+    font-size: var(--mdui-typescale-title-large-size);
+    line-height: var(--mdui-typescale-title-large-line-height);
+  }
 }
 </style>

@@ -170,8 +170,10 @@ function backHome(): void {
 
 async function copyInvite(): Promise<void> {
   const text = `${location.origin}/r/${props.code}`
-  if (await copyText(text)) toast('邀请链接已复制')
-  else toast(text)
+  if (await copyText(text)) return toast('邀请链接已复制')
+  // 复制失败时打开房间信息，里面的链接可以手动选中复制
+  showRoomInfo.value = true
+  toast('浏览器不允许自动复制，请在房间信息里手动复制链接')
 }
 
 /** 房间设置之外的两个页面。离开房间页会断开连接，回来时自动重新进入 */
