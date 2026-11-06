@@ -11,7 +11,7 @@ import PlaybackButtons from './PlaybackButtons.vue'
  * 播放页。两页切换："歌曲"是封面和信息，"歌词"是逐字歌词；进度和控制按钮两页共用。
  * 点封面进歌词、点歌词回封面，头部也有一个切换按钮。
  */
-const props = defineProps<{ open: boolean }>()
+const props = defineProps<{ open: boolean; unread?: number }>()
 const emit = defineEmits<{ close: []; openQueue: []; openChat: [] }>()
 const room = useRoom()
 const prefs = usePrefs()
@@ -82,12 +82,6 @@ function togglePage(): void {
         >
           <mdui-icon-translate></mdui-icon-translate>
         </mdui-button-icon>
-        <mdui-button-icon title="播放列表" @click="emit('openQueue')">
-          <mdui-icon-queue-music></mdui-icon-queue-music>
-        </mdui-button-icon>
-        <mdui-button-icon title="聊天" @click="emit('openChat')">
-          <mdui-icon-chat></mdui-icon-chat>
-        </mdui-button-icon>
       </div>
     </template>
 
@@ -133,7 +127,18 @@ function togglePage(): void {
           </span>
           <span>{{ fmtTime(duration) }}</span>
         </div>
-        <PlaybackButtons />
+        <div class="transport">
+          <mdui-button-icon title="播放列表" @click="emit('openQueue')">
+            <mdui-icon-queue-music></mdui-icon-queue-music>
+          </mdui-button-icon>
+          <PlaybackButtons />
+          <span class="chat-wrap">
+            <mdui-button-icon :title="unread ? `聊天（${unread} 条新消息）` : '聊天'" @click="emit('openChat')">
+              <mdui-icon-chat></mdui-icon-chat>
+            </mdui-button-icon>
+            <mdui-badge v-if="unread" class="chat-badge">{{ unread > 99 ? '99+' : unread }}</mdui-badge>
+          </span>
+        </div>
       </div>
     </div>
     <div v-else class="muted center empty">现在没有在播放</div>
@@ -201,6 +206,21 @@ function togglePage(): void {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+.transport {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.chat-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.chat-badge {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  pointer-events: none;
 }
 .times {
   margin-top: -8px;

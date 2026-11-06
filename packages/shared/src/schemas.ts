@@ -67,6 +67,17 @@ export const adminSettingsSchema = z.object({
   emailVerificationEnabled: z.boolean().optional(),
   turnstileEnabled: z.boolean().optional(),
 })
+/** 空字符串表示清除后台保存的值（退回环境变量）；不传表示不改 */
+export const adminIntegrationsSchema = z.object({
+  smtpHost: z.string().trim().max(255).optional(),
+  smtpPort: z.number().int().min(1).max(65535).optional(),
+  smtpSecure: z.boolean().optional(),
+  smtpUser: z.string().trim().max(255).optional(),
+  smtpPass: z.string().max(255).optional(),
+  smtpFrom: z.string().trim().max(255).optional(),
+  turnstileSiteKey: z.string().trim().max(255).optional(),
+  turnstileSecretKey: z.string().trim().max(255).optional(),
+})
 export const testEmailSchema = z.object({ to: emailSchema })
 
 export const createRoomSchema = z.object({

@@ -10,7 +10,7 @@ import {
 import { authService } from '../../auth/authService.ts'
 import { emailVerificationEnabled } from '../../auth/mailer.ts'
 import { turnstileEnabled } from '../../auth/turnstile.ts'
-import { config } from '../../config.ts'
+import { turnstileSettings } from '../../auth/runtimeConfig.ts'
 import { toMeView } from '../../db/users.ts'
 import { clearLoginCookie, parse, setLoginCookie } from '../helpers.ts'
 
@@ -22,7 +22,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return {
       emailVerificationEnabled: emailVerificationEnabled(),
       turnstileEnabled: ts,
-      turnstileSiteKey: ts ? config.turnstile.siteKey : null,
+      turnstileSiteKey: ts ? turnstileSettings().siteKey : null,
     }
   })
 

@@ -96,6 +96,7 @@ function afterLeave(): void {
         role="dialog"
         aria-modal="true"
         :aria-label="label"
+        data-app-sheet
         tabindex="-1"
         :style="dragY ? { transform: `translateY(${dragY}px)` } : undefined"
         @transitionend="onSettled"

@@ -131,6 +131,13 @@ export function buildSnapshot(
     hasHistory: shared.hasHistory,
     upNext: upNextItem ? itemView(upNextItem, shared, userId) : null,
     queue: shared.ranked.map((r) => itemView(r.item, shared, userId)),
+    history: room.history.map((h) => ({
+      id: h.id,
+      track: h.track,
+      addedBy: h.addedBy.map((id) => ({ id, nickname: nameOf(shared, id) })),
+      endedAt: h.endedAt,
+      reason: h.reason,
+    })),
     members: [...room.members.values()]
       .filter((m) => !m.left)
       .map((m) => ({

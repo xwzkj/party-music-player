@@ -13,6 +13,7 @@ const loading = ref(false)
 const index = ref(-1)
 const box = ref<HTMLDivElement | null>(null)
 let raf = 0
+let resizeObserver: ResizeObserver | null = null
 let cancelScroll: (() => void) | null = null
 /** 用户手动滚动（滚轮、触摸）后，暂停自动跟随 3 秒 */
 let userScrollUntil = 0
@@ -66,7 +67,8 @@ function scrollToCurrent(animate: boolean): void {
   const b = box.value
   const el = b?.querySelector<HTMLElement>(`[data-i="${index.value}"]`)
   if (!b || !el || performance.now() < userScrollUntil) return
-  const target = el.offsetTop - b.clientHeight / 2 + el.clientHeight / 2
+  // 容器是 offsetParent（见样式里的 position: relative），offsetTop 不受外层缩放动画影响
+  const target = el.offsetTop - b.clientHeight / 2 + el.offsetHeight / 2
   cancelScroll?.()
   if (!animate) {
     b.scrollTop = target
@@ -91,11 +93,26 @@ watch(
   () => props.showTranslation,
   () => void nextTick(() => scrollToCurrent(true)),
 )
+/** 上下留白取容器高度的一半，任何一行（包括第一行和最后一行）都能滚到正中 */
+function syncPadding(): void {
+  const b = box.value
+  if (b) b.style.setProperty('--pad', `${Math.round(b.clientHeight / 2)}px`)
+}
+
 onMounted(() => {
+  syncPadding()
   void load(props.sourceId)
   raf = requestAnimationFrame(frame)
+  if (box.value && typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(() => {
+      syncPadding()
+      scrollToCurrent(false)
+    })
+    resizeObserver.observe(box.value)
+  }
 })
 onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
   cancelAnimationFrame(raf)
   cancelScroll?.()
 })
@@ -120,8 +137,9 @@ onBeforeUnmount(() => {
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
+  position: relative;
   height: 100%;
-  padding: 45% 8px;
+  padding: var(--pad, 40%) 8px;
   box-sizing: border-box;
   text-align: center;
   mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent);

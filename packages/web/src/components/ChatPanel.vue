@@ -6,8 +6,11 @@ import { toastError, val } from '../ui'
 const room = useRoom()
 const text = ref('')
 const box = ref<HTMLDivElement | null>(null)
+const field = ref<HTMLElement | null>(null)
 const sending = ref(false)
 const hasMore = ref(true)
+/** 在全屏面板里使用时，底部要留出安全区 */
+defineProps<{ safeBottom?: boolean }>()
 
 function atBottom(): boolean {
   const b = box.value
@@ -33,6 +36,8 @@ async function send(): Promise<void> {
   const content = text.value.trim()
   if (!content || sending.value) return
   sending.value = true
+  // 点发送按钮会让输入框失焦，手机上键盘随之收起；先记下状态，发完再还原
+  const hadFocus = isFieldFocused()
   const ok = await room.act('chat:send', { content })
   sending.value = false
   if (ok !== undefined) {
@@ -40,6 +45,22 @@ async function send(): Promise<void> {
     await nextTick()
     toBottom()
   }
+  if (hadFocus) refocus()
+}
+
+function isFieldFocused(): boolean {
+  const f = field.value
+  return !!f && (document.activeElement === f || f.matches(':focus-within'))
+}
+
+function refocus(): void {
+  // 同步聚焦：在用户手势的调用栈里聚焦，iOS 才不会收起键盘
+  ;(field.value as (HTMLElement & { focus: (o?: FocusOptions) => void }) | null)?.focus({ preventScroll: true })
+}
+
+/** 发送按钮按下时阻止默认行为，输入框就不会失焦 */
+function keepFocus(e: Event): void {
+  e.preventDefault()
 }
 
 async function older(): Promise<void> {
@@ -72,8 +93,9 @@ const time = (t: number) => new Date(t).toLocaleTimeString('zh-CN', { hour: '2-d
       </template>
       <div v-if="!room.chats.length" class="muted center" style="padding: 32px 0">还没有消息</div>
     </div>
-    <div class="row input">
+    <div class="row input" :class="{ safe: safeBottom }">
       <mdui-text-field
+        ref="field"
         variant="outlined"
         class="spacer"
         placeholder="说点什么"
@@ -83,7 +105,13 @@ const time = (t: number) => new Date(t).toLocaleTimeString('zh-CN', { hour: '2-d
         @keydown.enter.exact.prevent="send"
         enterkeyhint="send"
       />
-      <mdui-button-icon variant="filled" :disabled="!text.trim()" @click="send"><mdui-icon-send></mdui-icon-send></mdui-button-icon>
+      <mdui-button-icon
+        variant="filled"
+        :disabled="!text.trim()"
+        @pointerdown="keepFocus"
+        @mousedown="keepFocus"
+        @click="send"
+      ><mdui-icon-send></mdui-icon-send></mdui-button-icon>
     </div>
   </div>
 </template>
@@ -141,5 +169,8 @@ const time = (t: number) => new Date(t).toLocaleTimeString('zh-CN', { hour: '2-d
 }
 .input {
   padding-top: 4px;
+}
+.input.safe {
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
 }
 </style>

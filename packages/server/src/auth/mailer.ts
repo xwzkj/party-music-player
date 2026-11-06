@@ -1,35 +1,36 @@
 import nodemailer from 'nodemailer'
 import { AppError } from '@pmp/shared'
-import { config } from '../config.ts'
 import { SettingKey, settingsRepo } from '../db/settings.ts'
 import { logger } from '../infra/logger.ts'
+import { smtpSettings } from './runtimeConfig.ts'
 
-export const smtpConfigured = (): boolean => !!(config.smtp.host && config.smtp.from)
+export const smtpConfigured = (): boolean => {
+  const c = smtpSettings()
+  return !!(c.host && c.from)
+}
 
 export const emailVerificationEnabled = (): boolean =>
   smtpConfigured() && settingsRepo.getBool(SettingKey.emailVerification, false)
 
-let transport: nodemailer.Transporter | null = null
-function getTransport(): nodemailer.Transporter {
-  if (!transport) {
-    transport = nodemailer.createTransport({
-      host: config.smtp.host,
-      port: config.smtp.port,
-      secure: config.smtp.secure,
-      auth: config.smtp.user ? { user: config.smtp.user, pass: config.smtp.pass } : undefined,
-    })
-  }
-  return transport
+/** 配置可能随时在后台修改，所以每次发信都按当前配置创建 transport */
+function createTransport(): nodemailer.Transporter {
+  const c = smtpSettings()
+  return nodemailer.createTransport({
+    host: c.host,
+    port: c.port,
+    secure: c.secure,
+    auth: c.user ? { user: c.user, pass: c.pass } : undefined,
+  })
 }
 
 /** 测试时替换发信实现 */
 export let sendMail = async (to: string, subject: string, text: string): Promise<void> => {
   if (!smtpConfigured()) throw new AppError('FEATURE_DISABLED')
   try {
-    await getTransport().sendMail({ from: config.smtp.from, to, subject, text })
+    await createTransport().sendMail({ from: smtpSettings().from, to, subject, text })
   } catch (e) {
     logger.error({ err: String(e) }, 'send mail failed')
-    throw new AppError('INTERNAL', 500, '邮件发送失败')
+    throw new AppError('INTERNAL', 500, '邮件发送失败，请检查 SMTP 配置')
   }
 }
 

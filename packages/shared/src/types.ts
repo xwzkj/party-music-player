@@ -74,6 +74,15 @@ export interface QueueItemView {
   score: ScoreBreakdown
 }
 
+/** 已经播过的歌（最近的在前） */
+export interface PlayedItemView {
+  id: string
+  track: Track
+  addedBy: { id: string; nickname: string }[]
+  endedAt: number
+  reason: EndedReason
+}
+
 export interface PlayVoteView {
   count: number
   needed: number
@@ -109,6 +118,7 @@ export interface RoomSnapshot {
   hasHistory: boolean
   upNext: QueueItemView | null
   queue: QueueItemView[]
+  history: PlayedItemView[]
   members: MemberView[]
   host?: {
     passcode: string

@@ -181,3 +181,12 @@ a {
 .fade-through-enter-from {
   transform: scale(0.92);
 }
+
+/*
+ * Toast（mdui-snackbar）。mdui 用内联样式 bottom 排列堆叠，这里在其基础上再抬高
+ * 房间页底部栏（播放条 + 导航栏）的高度，避免盖住导航。--app-toast-offset 由 RoomView 维护，
+ * 其他页面没有这个变量，等于 0。
+ */
+mdui-snackbar.app-toast {
+  margin-bottom: calc(var(--app-toast-offset, 0px) + env(safe-area-inset-bottom));
+}

@@ -2,7 +2,11 @@ import { confirm, snackbar } from 'mdui'
 import { ApiError } from './api/http'
 
 export function toast(message: string): void {
-  snackbar({ message, placement: 'bottom', autoCloseDelay: 3000, queue: 'toast' })
+  // 全屏面板（播放页、聊天、播放列表）打开时，底部是播放控件或输入框，toast 改到顶部显示
+  const inSheet = !!document.querySelector('[data-app-sheet]')
+  const bar = snackbar({ message, placement: inSheet ? 'top' : 'bottom', autoCloseDelay: 3000, queue: 'toast' })
+  // 底部的 toast 要抬到房间页底部栏之上：mdui 用内联样式排 bottom，这里用 margin 叠加 --app-toast-offset
+  if (!inSheet) bar.classList.add('app-toast')
 }
 
 export function toastError(e: unknown): void {
