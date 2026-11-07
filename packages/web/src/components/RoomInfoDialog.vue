@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoom } from '../stores/room'
-import { ask, copyText, toast, val } from '../ui'
+import { ask, checked, copyText, toast, val } from '../ui'
 
 /** 房间信息：房间号与邀请链接、房主改口令、关闭房间 */
 const props = defineProps<{ open: boolean; code: string }>()
@@ -9,7 +9,11 @@ const emit = defineEmits<{ close: [] }>()
 const room = useRoom()
 const isHost = computed(() => room.isHost)
 const passcode = computed(() => room.snap?.host?.passcode ?? '')
-const inviteUrl = computed(() => `${location.origin}/r/${props.code}`)
+const withPasscode = ref(false)
+const inviteUrl = computed(() => {
+  const base = `${location.origin}/r/${props.code}`
+  return withPasscode.value && passcode.value ? `${base}?p=${encodeURIComponent(passcode.value)}` : base
+})
 const editing = ref(false)
 const draft = ref('')
 const saving = ref(false)
@@ -19,7 +23,10 @@ const linkEl = ref<HTMLElement | null>(null)
 watch(
   () => props.open,
   (open) => {
-    if (open) editing.value = false
+    if (open) {
+      editing.value = false
+      withPasscode.value = false
+    }
   },
 )
 
@@ -81,6 +88,13 @@ async function closeRoom(): Promise<void> {
         <div class="code">{{ code }}</div>
         <div class="link-row">
           <span ref="linkEl" class="link" @click="selectLink">{{ inviteUrl }}</span>
+        </div>
+        <div v-if="isHost" class="row include">
+          <span class="spacer">链接包含口令</span>
+          <mdui-switch :checked="withPasscode" @change="withPasscode = checked($event)"></mdui-switch>
+        </div>
+        <div v-if="isHost && withPasscode" class="muted">
+          收到链接的人可以直接进房间，不用再输口令。
         </div>
         <mdui-button variant="tonal" full-width @click="copyInvite">
           <mdui-icon-link slot="icon"></mdui-icon-link>复制邀请链接
@@ -175,6 +189,10 @@ async function closeRoom(): Promise<void> {
   align-items: center;
   gap: 8px;
   min-height: 40px;
+}
+.include {
+  align-items: center;
+  min-height: 32px;
 }
 .pass {
   flex: 1;

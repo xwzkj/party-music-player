@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { get, post } from '../api/http'
 import { toastError, val } from '../ui'
 
 const props = defineProps<{ code: string }>()
 const router = useRouter()
+const route = useRoute()
 const loading = ref(true)
 const open = ref(false)
 const passcode = ref('')
 const busy = ref(false)
+/** 邀请链接里带了口令：/r/CODE?p=xxxx */
+const invitePasscode = typeof route.query.p === 'string' ? route.query.p : ''
 
 onMounted(async () => {
   try {
@@ -17,6 +20,12 @@ onMounted(async () => {
     open.value = info.open
     // 已经加入过就直接进房间
     if (info.open && info.joined) return void router.replace(`/r/${props.code}/room`)
+    // 链接自带口令时直接加入，不再让用户手输
+    if (info.open && invitePasscode) {
+      passcode.value = invitePasscode
+      await join()
+      return
+    }
   } catch (e) {
     toastError(e)
   } finally {
